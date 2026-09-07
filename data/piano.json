@@ -1,0 +1,31 @@
+{
+    "piano": {
+        "name": "Standard 88-Key Piano",
+        "keyCount": 88,
+        "firstNote": "A0",
+        "lastNote": "C8"
+    },
+    "keys": [
+        {
+            "number": 1,
+            "note": "A0",
+            "midi": 21,
+            "frequency": 27.5,
+            "type": "white"
+        },
+        {
+            "number": 2,
+            "note": "A#0",
+            "midi": 22,
+            "frequency": 29.1352,
+            "type": "black"
+        },
+        {
+            "number": 3,
+            "note": "B0",
+            "midi": 23,
+            "frequency": 30.8677,
+            "type": "white"
+        }
+    ]
+}

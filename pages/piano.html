@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title> 가상 피아노 | 루이의 음악실 </title>
+
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/piano.css">
+</head>
+
+<body>
+
+    <header class="site-header">
+
+        <div class="logo">
+
+            <span class="logo-icon"> 🎹 </span>
+
+            <div>
+                <h1> 루이의 음악실 </h1>
+                <p> Louis Kariel Music Blog </p>
+            </div>
+
+        </div>
+
+        <nav class="main-nav">
+
+            <a href="../index.html"> 홈 </a>
+
+            <a href="piano.html" class="active">
+                피아노
+            </a>
+
+            <a href="composer.html">
+                작곡실
+            </a>
+
+            <a href="#">
+                게시판
+            </a>
+
+            <a href="#">
+                프로필
+            </a>
+
+        </nav>
+
+        <button class="login-button">
+            로그인
+        </button>
+
+    </header>
+
+    <main class="piano-page">
+
+        <section class="piano-header">
+
+            <p> VIRTUAL PIANO </p>
+
+            <h2>
+                🎹 가상 피아노
+            </h2>
+
+            <span>
+                마우스 또는 컴퓨터 키보드로 연주해보세요.
+            </span>
+
+        </section>
+
+        <section class="piano-controls">
+
+            <div class="control-group">
+
+                <label>
+                    옥타브
+                </label>
+
+                <button id="octaveDown">
+                    -
+                </button>
+
+                <span id="octaveDisplay">
+                    4
+                </span>
+
+                <button id="octaveUp">
+                    +
+                </button>
+
+            </div>
+
+            <div class="control-group">
+
+                <label>
+                    볼륨
+                </label>
+
+                <input type="range" id="volume" min="0" max="1" step="0.01" value="0.5">
+
+            </div>
+
+            <div class="record-controls">
+
+                <button class="record-button" id="recordButton">
+                    🔴 녹음
+                </button>
+
+                <button class="play-button" id="playButton" disabled>
+                    ▶ 재생
+                </button>
+
+                <button class="clear-button" id="clearButton" disabled>
+                    🗑 삭제
+                </button>
+
+                <button class="composer-button" id="sendToComposerButton" disabled>
+                    🎼 작곡실로 보내기
+                </button>
+
+            </div>
+
+            <button class="stop-button" id="stopAll">
+                ⏹ 모두 정지
+            </button>
+
+        </section>
+
+        <section class="current-note">
+
+            <span>
+                현재 음
+            </span>
+
+            <strong id="currentNote">
+                -
+            </strong>
+
+        </section>
+
+        <section class="record-status">
+
+            <span id="recordStatus">
+                녹음 대기중
+            </span>
+
+            <span id="recordTime">
+                00:00
+            </span>
+
+        </section>
+
+        <section class="piano-wrapper">
+
+            <div class="piano"></div>
+
+        </section>
+
+        <section class="piano-help">
+
+            <h3>
+                ⌨️ 키보드 사용법
+            </h3>
+
+            <p>
+                A · W · S · E · D · F · T · G · Y · H · U · J
+            </p>
+
+            <span>
+                컴퓨터 키보드의 해당 키를 눌러 피아노를 연주할 수 있습니다.
+            </span>
+
+        </section>
+
+    </main>
+
+    <footer class="site-footer">
+
+        <div class="footer-logo">
+            🎹 루이의 음악실
+        </div>
+
+        <p>
+            Louis Kariel Music Blog Project
+        </p>
+
+        <p class="copyright">
+            © 2026 Louis Kariel. All rights reserved.
+        </p>
+
+    </footer>
+
+    <script src="../js/piano/pianoKeys.js"></script>
+    <script src="../js/piano/piano.js"></script>
+    
+    <!--
+    <script src="../js/piano/pianoInput.js"></script>
+    -->
+
+</body>
+
+</html>
