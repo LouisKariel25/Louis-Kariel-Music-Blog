@@ -465,3 +465,10 @@
 .piano-roll-body .piano-roll {
     flex: 1;
 }
+
+.note-block.selected {
+    outline: 3px solid #8b7355;
+    outline-offset: 1px;
+    transform: scale(1.03);
+    z-index: 10;
+}
