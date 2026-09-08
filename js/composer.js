@@ -1029,6 +1029,50 @@ function renderComposition() {
             "note-block"
         );
 
+        block.noteData =
+            noteData;
+
+        const noteSymbol =
+            document.createElement("span");
+
+        noteSymbol.classList.add(
+            "note-symbol"
+        );
+
+        const duration =
+            noteData.durationBeats ||
+            DEFAULT_NOTE_DURATION;
+
+        if (duration <= 0.25) {
+
+            noteSymbol.textContent = "𝅘𝅥𝅯";
+
+        }
+        else if (duration <= 0.5) {
+
+            noteSymbol.textContent = "♪";
+
+        }
+        else if (duration <= 1) {
+
+            noteSymbol.textContent = "♩";
+
+        }
+        else if (duration <= 2) {
+
+            noteSymbol.textContent = "𝅗𝅥";
+
+        }
+        else {
+
+            noteSymbol.textContent = "𝅝";
+
+        }
+
+        block.appendChild(
+            noteSymbol
+        );
+
         if (
             selectedNotes.includes(
                 noteData
@@ -1144,13 +1188,17 @@ function setupNoteDrag(
 
     let selectedNotePositions = [];
 
+    let originalLeft = 0;
+    let originalTop = 0;
+
     block.addEventListener(
         "pointerdown",
         event => {
 
             if (
                 event.shiftKey &&
-                !isCopying
+                !event.ctrlKey &&
+                !event.metaKey
             ) {
 
                 toggleNoteSelection(
@@ -1159,7 +1207,7 @@ function setupNoteDrag(
 
                 renderComposition();
 
-                statusText.textContent =
+                statusText.textContent = 
                     selectedNotes.length > 0
                         ? `${selectedNotes.length}개의 음표가 선택되었습니다.`
                         : "선택이 해제되었습니다.";
@@ -1173,24 +1221,25 @@ function setupNoteDrag(
                     "note-resize-handle"
                 )
             ) {
+
                 return;
+
             }
 
             event.preventDefault();
             event.stopPropagation();
 
             isDragging = true;
-
             hasMoved = false;
 
-            isCopying =
+            isCopying = 
                 event.ctrlKey ||
                 event.metaKey;
 
-            startX =
+            startX = 
                 event.clientX;
 
-            startY =
+            startY = 
                 event.clientY;
 
             if (
@@ -1205,34 +1254,47 @@ function setupNoteDrag(
 
             }
 
-            startStep =
+            startStep = 
                 noteData.step;
 
-            startRow =
+            startRow = 
                 noteList.indexOf(
                     noteData.note
                 );
 
-            selectedNotePositions =
+            selectedNotePositions = 
                 selectedNotes.map(
                     note => ({
-                        noteData: note,
-                        step: note.step,
-                        row: noteList.indexOf(
-                            note.note
-                        )
+
+                        noteData : 
+                            note,
+
+                        step : 
+                            note.step,
+
+                        row : 
+                            noteList.indexOf(
+                                note.note
+                            )
+
                     })
                 );
 
-            cellWidth =
+            const rect = 
                 block.parentElement
-                    .getBoundingClientRect()
-                    .width;
+                    .getBoundingClientRect();
 
-            cellHeight =
-                block.parentElement
-                    .getBoundingClientRect()
-                    .height;
+            cellWidth = 
+                rect.width;
+
+            cellHeight = 
+                rect.height;
+
+            originalLeft = 
+                block.offsetLeft;
+
+            originalTop = 
+                block.offsetTop;
 
             block.setPointerCapture(
                 event.pointerId
@@ -1242,8 +1304,8 @@ function setupNoteDrag(
                 "dragging"
             );
 
-            statusText.textContent =
-                `음표 이동 중 : ${noteData.note}`;
+            statusText.textContent = 
+                `음표 잡기 : ${noteData.note}`;
 
         }
     );
@@ -1259,17 +1321,17 @@ function setupNoteDrag(
             event.preventDefault();
             event.stopPropagation();
 
-            const deltaX =
-                event.clientX -
+            const deltaX = 
+                event.clientX - 
                 startX;
 
-            const deltaY =
-                event.clientY -
+            const deltaY = 
+                event.clientY - 
                 startY;
 
-            const dragDistance =
+            const dragDistance = 
                 Math.sqrt(
-                    deltaX * deltaX +
+                    deltaX * deltaX + 
                     deltaY * deltaY
                 );
 
@@ -1278,53 +1340,69 @@ function setupNoteDrag(
             ) {
 
                 hasMoved = true;
+
                 wasDragging = true;
 
             }
 
-            const deltaSteps =
+            if (!hasMoved) {
+                return;
+            }
+
+            block.style.transform = 
+                `translate(${deltaX}px, ${deltaY}px) scale(1.04)`;
+
+            block.style.opacity = 
+                "0.82";
+
+            block.style.cursor = 
+                "grabbing";
+
+            const deltaSteps = 
                 Math.round(
-                    deltaX /
+                    deltaX / 
                     cellWidth
                 );
 
-            const deltaRows =
+            const deltaRows = 
                 Math.round(
-                    deltaY /
+                    deltaY / 
                     cellHeight
                 );
 
-            let newStep =
-                startStep +
+            let previewStep = 
+                startStep + 
                 deltaSteps;
 
-            let newRow =
-                startRow +
+            let previewRow = 
+                startRow + 
                 deltaRows;
 
-            newStep =
+            previewStep = 
                 Math.max(
                     0,
                     Math.min(
                         STEPS - 1,
-                        newStep
+                        previewStep
                     )
                 );
 
-            newRow =
+            previewRow = 
                 Math.max(
                     0,
                     Math.min(
                         ROWS - 1,
-                        newRow
+                        previewRow
                     )
                 );
 
-            const newNote =
-                noteList[newRow];
+            const previewNote = 
+                noteList[
+                    previewRow
+                ];
 
-            statusText.textContent =
-                `이동 위치 : ${newNote}, ${newStep + 1}번째 박`;
+            statusText.textContent = 
+                `이동 위치 : ${previewNote}, ${previewStep + 1}번째 박`;
 
         }
     );
@@ -1354,6 +1432,15 @@ function setupNoteDrag(
 
             }
 
+            block.style.transform = 
+                "";
+
+            block.style.opacity = 
+                "";
+
+            block.style.cursor = 
+                "";
+
             block.classList.remove(
                 "dragging"
             );
@@ -1364,239 +1451,169 @@ function setupNoteDrag(
 
             }
 
-            const deltaX =
-                event.clientX -
+            const deltaX = 
+                event.clientX - 
                 startX;
 
-            const deltaY =
-                event.clientY -
+            const deltaY = 
+                event.clientY - 
                 startY;
 
-            const deltaSteps =
+            const deltaSteps = 
                 Math.round(
-                    deltaX /
+                    deltaX / 
                     cellWidth
                 );
 
-            const deltaRows =
+            const deltaRows = 
                 Math.round(
-                    deltaY /
+                    deltaY / 
                     cellHeight
                 );
 
-            let newStep =
-                startStep +
-                deltaSteps;
-
-            let newRow =
-                startRow +
-                deltaRows;
-
-            newStep =
-                Math.max(
-                    0,
-                    Math.min(
-                        STEPS - 1,
-                        newStep
-                    )
-                );
-
-            newRow =
-                Math.max(
-                    0,
-                    Math.min(
-                        ROWS - 1,
-                        newRow
-                    )
-                );
-
-            const newNote =
-                noteList[newRow];
-
-            const maxDuration =
-                getMaxDurationForStep(newStep);
-
-            const newDuration =
-                Math.min(
-                    noteData.durationBeats,
-                    maxDuration
-                );
-
-            const collision =
-                composition.some(
-                    item =>
-                        item !== noteData &&
-                        item.note === newNote &&
-                        item.step === newStep
-                );
-
-            if (collision) {
-
-                statusText.textContent =
-                    "이미 음표가 있는 위치입니다.";
-
-                return;
-
-            }
-
             if (isCopying) {
 
-                const targetNote = {
-                    note: newNote,
-                    step: newStep,
-                    durationBeats: newDuration
-                };
+                let newStep = 
+                    startStep + 
+                    deltaSteps;
 
-                composition.push(
-                    targetNote
-                );
+                let newRow = 
+                    startRow + 
+                    deltaRows;
 
-                statusText.textContent =
-                    `음표가 ${newNote}, ${newStep + 1}번째 박에 복제되었습니다.`;
-
-            } else {
-
-                let canMove =
-                    true;
-
-                const movedPositions =
-                    selectedNotePositions.map(
-                        position => {
-
-                            let targetStep =
-                                position.step +
-                                deltaSteps;
-
-                            let targetRow =
-                                position.row +
-                                deltaRows;
-
-                            targetStep =
-                                Math.max(
-                                    0,
-                                    Math.min(
-                                        STEPS - 1,
-                                        targetStep
-                                    )
-                                );
-
-                            targetRow =
-                                Math.max(
-                                    0,
-                                    Math.min(
-                                        ROWS - 1,
-                                        targetRow
-                                    )
-                                );
-
-                            return {
-                                noteData:
-                                    position.noteData,
-
-                                step:
-                                    targetStep,
-
-                                note:
-                                    noteList[targetRow]
-                            };
-
-                        }
+                newStep = 
+                    Math.max(
+                        0,
+                        Math.min(
+                            STEPS - 1,
+                            newStep
+                        )
                     );
 
-                movedPositions.forEach(
-                    position => {
+                newRow = 
+                    Math.max(
+                        0,
+                        Math.min(
+                            ROWS - 1,
+                            newRow
+                        )
+                    );
 
-                        const collision =
-                            composition.some(
-                                item =>
-                                    !selectedNotes.includes(
-                                        item
-                                    ) &&
-                                    item.note ===
-                                    position.note &&
-                                    item.step ===
-                                    position.step
-                            );
+                const newNote = 
+                    noteList[
+                        newRow
+                    ];
 
-                        if (collision) {
-                            canMove = false;
-                        }
+                const collision = 
+                    composition.some(
+                        item =>
+                            item.note ===
+                                newNote &&
+                            item.step ===
+                                newStep
+                    );
 
-                    }
-                );
+                if (collision) {
 
-                if (!canMove) {
+                    statusText.textContent = 
+                        "이미 음표가 있는 위치입니다.";
 
-                    statusText.textContent =
-                        "선택한 음표 중 이동할 수 없는 위치가 있습니다.";
+                    renderComposition();
 
                     return;
 
                 }
 
-                movedPositions.forEach(
+                const maxDuration = 
+                    getMaxDurationForStep(
+                        newStep
+                    );
+
+                const newDuration = 
+                    Math.min(
+                        noteData.durationBeats,
+                        maxDuration
+                    );
+
+                composition.push({
+
+                    note : 
+                        newNote,
+                    
+                    step : 
+                        newStep,
+
+                    durationBeats : 
+                        newDuration
+
+                });
+
+                statusText.textContent = 
+                    `음표가 ${newNote}, ${newStep + 1}번째 박에 복제되었습니다.`;
+
+                renderComposition();
+
+                return;
+
+            }
+
+            const movedPositions = 
+                selectedNotePositions.map(
                     position => {
 
-                        position.noteData.step =
-                            position.step;
+                        let targetStep = 
+                            position.step + 
+                            deltaSteps;
 
-                        position.noteData.note =
-                            position.note;
+                        let targetRow = 
+                            position.row + 
+                            deltaRows;
 
-                        const maxDuration =
-                            getMaxDurationForStep(
-                                position.step
+                        targetStep = 
+                            Math.max(
+                                0,
+                                Math.min(
+                                    STEPS - 1,
+                                    targetStep
+                                )
                             );
 
-                        position.noteData.durationBeats =
-                            Math.min(
-                                position.noteData
-                                    .durationBeats,
-                                maxDuration
+                        targetRow = 
+                            Math.max(
+                                0,
+                                Math.min(
+                                    ROWS - 1,
+                                    targetRow
+                                )
                             );
+
+                        return {
+
+                            noteData : 
+                                position.noteData,
+
+                            step : 
+                                targetStep,
+
+                            row : 
+                                targetRow,
+
+                            note : 
+                                noteList[
+                                    targetRow
+                                ]
+
+                        };
 
                     }
                 );
 
-                statusText.textContent =
-                    `${selectedNotes.length}개의 음표가 함께 이동되었습니다.`;
-
-                renderComposition();
-
-            }
-
-            block.addEventListener(
-                "pointercancel",
-                event => {
-
-                    if (!isDragging) {
-                        return;
-                    }
-
-                    isDragging = false;
-
-                    if (
-                        block.hasPointerCapture(
-                            event.pointerId
-                        )
-                    ) {
-
-                        block.releasePointerCapture(
-                            event.pointerId
-                        );
-
-                    }
-
-                    block.classList.remove(
-                        "dragging"
-                    );
-
-                }
-            );
+            
 
         }
+    )
 
-    }
+}
 
 function setupNoteResize(
     block,
