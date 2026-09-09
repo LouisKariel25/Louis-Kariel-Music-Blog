@@ -550,8 +550,6 @@ function syncBeatLabelsWidth() {
 
 function toggleNote(cell) {
 
-    saveUndoState();
-
     const note =
         cell.dataset.note;
 
@@ -566,6 +564,8 @@ function toggleNote(cell) {
                 item.step === step &&
                 item.note === note
         );
+
+    saveUndoState();
 
     if (
         existingIndex !== -1
@@ -675,8 +675,6 @@ document.addEventListener(
 
 function addKeyboardNote(note) {
 
-    saveUndoState();
-
     const cell =
         [...document.querySelectorAll(
             ".composer-cell"
@@ -697,6 +695,8 @@ function addKeyboardNote(note) {
                 item.step === currentStep &&
                 item.note === note
         );
+
+    saveUndoState();
 
     if (
         existingIndex !== -1
@@ -784,6 +784,65 @@ function getMaxDurationForStep(step) {
         4 - positionInMeasure;
 
     return remainingBeats;
+
+}
+
+function hasNoteCollision(
+    note,
+    step,
+    durationBeats,
+    ignoredNotes = []
+) {
+
+    const newStart =
+        step;
+
+    const newEnd =
+        step +
+        durationBeats;
+
+    return composition.some(
+        item => {
+
+            if (
+                ignoredNotes.includes(
+                    item
+                )
+            ) {
+                return false;
+            }
+
+            if (
+                item.note !== note
+            ) {
+                return false;
+            }
+
+            const existingStart =
+                item.step;
+
+            const existingEnd =
+                item.step +
+                (
+                    item.durationBeats ||
+                    DEFAULT_NOTE_DURATION
+                );
+
+            return (
+                newStart < existingEnd &&
+                newEnd > existingStart
+            );
+
+        }
+    );
+
+}
+
+function snapStep(step) {
+
+    return Math.round(
+        step * 4
+    ) / 4;
 
 }
 
@@ -1500,6 +1559,24 @@ function setupNoteDrag(
                 return;
             }
 
+            const deltaSteps =
+                Math.round(
+                    deltaX /
+                    cellWidth
+                );
+
+            const deltaRows =
+                Math.round(
+                    deltaY /
+                    cellHeight
+                );
+
+            const snappedDeltaX =
+                deltaSteps * cellWidth;
+
+            const snappedDeltaY =
+                deltaRows * cellHeight;
+
             selectedNotePositions.forEach(
                 position => {
 
@@ -1517,7 +1594,7 @@ function setupNoteDrag(
                     }
 
                     targetBlock.style.transform =
-                        `translate(${deltaX}px, ${deltaY}px) scale(1.04)`;
+                        `translate(${snappedDeltaX}px, ${snappedDeltaY}px) scale(1.04)`;
 
                     targetBlock.style.opacity =
                         "0.82";
@@ -1530,18 +1607,6 @@ function setupNoteDrag(
 
                 }
             );
-
-            const deltaSteps =
-                Math.round(
-                    deltaX /
-                    cellWidth
-                );
-
-            const deltaRows =
-                Math.round(
-                    deltaY /
-                    cellHeight
-                );
 
             let previewStep =
                 startStep +
@@ -1691,19 +1756,6 @@ function setupNoteDrag(
                         targetRow
                         ];
 
-                    const collision =
-                        composition.some(
-                            item =>
-                                item.note ===
-                                targetNote &&
-                                item.step ===
-                                targetStep
-                        );
-
-                    if (collision) {
-                        continue;
-                    }
-
                     const maxDuration =
                         getMaxDurationForStep(
                             targetStep
@@ -1716,6 +1768,18 @@ function setupNoteDrag(
                             maxDuration
                         );
 
+                    const collision =
+                        hasNoteCollision(
+                            targetNote,
+                            targetStep,
+                            newDuration,
+                            notesToCopy
+                        );
+
+                    if (collision) {
+                        continue;
+                    }
+
                     clones.push({
                         note: targetNote,
                         step: targetStep,
@@ -1723,6 +1787,21 @@ function setupNoteDrag(
                     });
 
                 }
+
+                if (
+                    clones.length === 0
+                ) {
+
+                    statusText.textContent =
+                        "복사할 수 있는 음표가 없습니다.";
+
+                    renderComposition();
+
+                    return;
+
+                }
+
+                saveUndoState();
 
                 composition.push(
                     ...clones
@@ -1792,17 +1871,28 @@ function setupNoteDrag(
 
             const collision =
                 movedPositions.some(
-                    position =>
-                        composition.some(
-                            item =>
-                                !selectedNotes.includes(
-                                    item
-                                ) &&
-                                item.note ===
-                                position.note &&
-                                item.step ===
-                                position.step
-                        )
+                    position => {
+
+                        const noteData =
+                            position.noteData;
+
+                        const duration =
+                            noteData.durationBeats ||
+                            DEFAULT_NOTE_DURATION;
+
+                        return hasNoteCollision(
+                            position.note,
+                            position.step,
+                            Math.min(
+                                duration,
+                                getMaxDurationForStep(
+                                    position.step
+                                )
+                            ),
+                            selectedNotes
+                        );
+
+                    }
                 );
 
             if (collision) {
@@ -1815,6 +1905,8 @@ function setupNoteDrag(
                 return;
 
             }
+
+            saveUndoState();
 
             movedPositions.forEach(
                 position => {
@@ -1914,10 +2006,16 @@ function setupNoteResize(
 
             wasResizing = true;
 
+            saveUndoState();
+
             startX =
                 event.clientX;
 
             startDuration =
+                noteData.durationBeats ||
+                DEFAULT_NOTE_DURATION;
+
+            const originalDuration =
                 noteData.durationBeats ||
                 DEFAULT_NOTE_DURATION;
 
@@ -2056,7 +2154,22 @@ clearButton.addEventListener(
             return;
         }
 
+        if (
+            composition.length === 0
+        ) {
+
+            statusText.textContent =
+                "삭제할 작곡 내용이 없습니다.";
+
+            return;
+
+        }
+
+        saveUndoState();
+
         composition = [];
+
+        selectedNotes = [];
 
         currentStep = 0;
 
