@@ -377,6 +377,8 @@
     box-shadow:
         inset 0 0 0 1px rgba(255, 255, 255, 0.35),
         0 2px 4px rgba(0, 0, 0, 0.15);
+    transition: none;
+    will-change: transform;
 }
 
 .note-block:hover {
@@ -403,11 +405,10 @@
 }
 
 .note-block.dragging {
-    opacity: 0.85;
+    opacity: 0.82;
     cursor: grabbing;
-    transform: scale(1.04) translateY(-4px);
     box-shadow: 0 8px 14px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.45);
-    transition: transform 0.08s ease, box-shadow 0.08s ease;
+    will-change: transform;
 }
 
 .note-block.resizing {
