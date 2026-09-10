@@ -558,40 +558,6 @@ function toggleNote(cell) {
             cell.dataset.step
         );
 
-    const existingIndex =
-        composition.findIndex(
-            item =>
-                item.step === step &&
-                item.note === note
-        );
-
-    saveUndoState();
-
-    if (
-        existingIndex !== -1
-    ) {
-
-        composition.splice(
-            existingIndex,
-            1
-        );
-
-        cell.classList.remove(
-            "active"
-        );
-
-        selectedNote.textContent =
-            note;
-
-        statusText.textContent =
-            "음표가 삭제되었습니다.";
-
-        renderComposition();
-
-        return;
-
-    }
-
     const maxDuration =
         getMaxDurationForStep(step);
 
@@ -601,35 +567,45 @@ function toggleNote(cell) {
             maxDuration
         );
 
+    const offset =
+        getNextAvailableOffset(
+            note,
+            step,
+            actualDuration
+        );
+
+    if (offset === null) {
+
+        statusText.textContent =
+            "이 박에 더이상 음표를 넣을 공간이 없습니다.";
+
+        return;
+
+    }
+
+    saveUndoState();
+
     composition.push({
 
-        note: note,
-        step: step,
-        durationBeats: actualDuration
+        note:
+            note,
+
+        step:
+            step,
+
+        offsetBeats:
+            offset,
+
+        durationBeats:
+            actualDuration
 
     });
-
-    cell.classList.add(
-        "active"
-    );
 
     selectedNote.textContent =
         note;
 
-    if (
-        actualDuration <
-        selectedDuration
-    ) {
-
-        statusText.textContent =
-            `마디 끝에 맞춰 ${actualDuration}박으로 조정되었습니다.`;
-
-    } else {
-
-        statusText.textContent =
-            `${actualDuration}박 음표가 입력되었습니다.`;
-
-    }
+    statusText.textContent =
+        `${actualDuration}박 음표가 입력되었습니다.`;
 
     renderComposition();
 
@@ -681,46 +657,13 @@ function addKeyboardNote(note) {
         )].find(
             item =>
                 item.dataset.note === note &&
-                Number(item.dataset.step)
-                === currentStep
+                Number(
+                    item.dataset.step
+                ) === currentStep
         );
 
     if (!cell) {
         return;
-    }
-
-    const existingIndex =
-        composition.findIndex(
-            item =>
-                item.step === currentStep &&
-                item.note === note
-        );
-
-    saveUndoState();
-
-    if (
-        existingIndex !== -1
-    ) {
-
-        composition.splice(
-            existingIndex,
-            1
-        );
-
-        cell.classList.remove(
-            "active"
-        );
-
-        selectedNote.textContent =
-            note;
-
-        statusText.textContent =
-            "음표가 삭제되었습니다.";
-
-        renderComposition();
-
-        return;
-
     }
 
     const maxDuration =
@@ -734,35 +677,45 @@ function addKeyboardNote(note) {
             maxDuration
         );
 
+    const offset =
+        getNextAvailableOffset(
+            note,
+            currentStep,
+            actualDuration
+        );
+
+    if (offset === null) {
+
+        statusText.textContent =
+            "이 박에 더 이상 음표를 넣을 공간이 없습니다.";
+
+        return;
+
+    }
+
+    saveUndoState();
+
     composition.push({
 
-        note: note,
-        step: currentStep,
-        durationBeats: actualDuration
+        note:
+            note,
+
+        step:
+            currentStep,
+
+        offsetBeats:
+            offset,
+
+        durationBeats:
+            actualDuration
 
     });
-
-    cell.classList.add(
-        "active"
-    );
 
     selectedNote.textContent =
         note;
 
-    if (
-        actualDuration <
-        selectedDuration
-    ) {
-
-        statusText.textContent =
-            `마디 끝에 맞춰 ${actualDuration}박으로 조정되었습니다.`;
-
-    } else {
-
-        statusText.textContent =
-            `${actualDuration}박 음표가 입력되었습니다.`;
-
-    }
+    statusText.textContent =
+        `${acutalDuration}박 음표가 입력되었습니다.`;
 
     playNote(
         note,
@@ -772,6 +725,78 @@ function addKeyboardNote(note) {
     renderComposition();
 
     moveToNextStep();
+
+}
+
+function getNextAvailableOffset(
+    note,
+    step,
+    duration
+) {
+
+    const subdivisions = 4;
+
+    for (
+        let i = 0;
+        i < subdivisions;
+        i++
+    ) {
+
+        const offset =
+            i / subdivisions;
+
+        const newStart =
+            offset;
+
+        const newEnd =
+            offset + duration;
+
+        if (newEnd > 1) {
+            continue;
+        }
+
+        const collision =
+            composition.some(
+                item => {
+
+                    if (
+                        item.note !== note ||
+                        item.step !== step
+                    ) {
+                        return false;
+                    }
+
+                    const existingOffset =
+                        item.offsetBeats || 0;
+
+                    const existingDuration =
+                        item.durationBeats ||
+                        DEFAULT_NOTE_DURATION;
+
+                    const existingStart =
+                        existingOffset;
+
+                    const existingEnd =
+                        existingOffset +
+                        existingDuration;
+
+                    return (
+                        newStart < existingEnd &&
+                        newEnd > existingStart
+                    );
+
+                }
+            );
+
+        if (!collision) {
+
+            return offset;
+
+        }
+
+    }
+
+    return null;
 
 }
 
@@ -1135,6 +1160,12 @@ function loadComposition() {
         composition =
             composition.map(note => ({
                 ...note,
+
+                offsetBeats:
+                    typeof note.offsetBeats === "number"
+                        ? note.offsetBeats
+                        : 0,
+
                 durationBeats:
                     note.durationBeats ||
                     DEFAULT_NOTE_DURATION
@@ -1239,12 +1270,80 @@ function renderComposition() {
         block.noteData =
             noteData;
 
+        block.addEventListener(
+            "click",
+            event => {
+
+                if (
+                    event.target.closest(
+                        ".note-resize-handle"
+                    )
+                ) {
+                    return;
+                }
+
+                if (
+                    event.shiftKey ||
+                    event.ctrlKey ||
+                    event.metaKey
+                ) {
+                    return;
+                }
+
+                event.stopPropagation();
+
+                saveUndoState();
+
+                const index =
+                    composition.indexOf(
+                        noteData
+                    );
+
+                if (index !== -1) {
+
+                    composition.splice(
+                        index,
+                        1
+                    );
+
+                    selectedNotes =
+                        selectedNotes.filter(
+                            note =>
+                                note !== noteData
+                        );
+
+                    renderComposition();
+
+                    statusText.textContent =
+                        "음표가 삭제되었습니다.";
+
+                }
+
+            }
+        );
+
         const noteSymbol =
             document.createElement("span");
 
         noteSymbol.classList.add(
             "note-symbol"
         );
+
+        if (noteData.durationBeats <= 0.25) {
+
+            noteSymbol.classList.add(
+                "short-note-symbol"
+            );
+
+        } else if (
+            noteData.durationBeats <= 0.5
+        ) {
+
+            noteSymbol.classList.add(
+                "half-note-symbol"
+            );
+
+        }
 
         const duration =
             noteData.durationBeats ||
@@ -1312,6 +1411,15 @@ function renderComposition() {
             noteData
         );
 
+        const offsetBeats =
+            noteData.offsetBeats || 0;
+
+        const cellWidth =
+            cell.getBoundingClientRect().width;
+
+        block.style.left =
+            `${cellWidth * offsetBeats}px`;
+
         setupNoteDrag(
             block,
             noteData
@@ -1342,10 +1450,10 @@ function updateNoteBlockWidth(
             .width;
 
     const width =
-        cellWidth * duration - 4;
+        cellWidth * duration;
 
     block.style.width =
-        `${Math.max(width, 12)}px`;
+        `${Math.max(width - 4, 4)}px`;
 
 }
 
@@ -2006,16 +2114,10 @@ function setupNoteResize(
 
             wasResizing = true;
 
-            saveUndoState();
-
             startX =
                 event.clientX;
 
             startDuration =
-                noteData.durationBeats ||
-                DEFAULT_NOTE_DURATION;
-
-            const originalDuration =
                 noteData.durationBeats ||
                 DEFAULT_NOTE_DURATION;
 
@@ -2064,8 +2166,12 @@ function setupNoteResize(
             const step =
                 noteData.step;
 
+            const offsetBeats =
+                noteData.offsetBeats || 0;
+
             const maxDuration =
-                getMaxDurationForStep(step);
+                getMaxDurationForStep(step) -
+                offsetBeats;
 
             newDuration =
                 Math.max(
@@ -2107,6 +2213,8 @@ function setupNoteResize(
         event.stopPropagation();
 
         isResizing = false;
+
+        wasResizing = true;
 
         if (
             handle.hasPointerCapture(
