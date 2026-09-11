@@ -509,3 +509,12 @@
     transform: scale(1.03);
     z-index: 30;
 }
+
+.tuplet-button {
+    cursor : pointer;
+}
+
+.tuplet-button.active {
+    font-weight : bold;
+    transform : translateY(-1px);
+}

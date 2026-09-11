@@ -98,6 +98,8 @@ const selectedNote =
 
 let selectedDuration = 1;
 
+let tripletMode = false;
+
 const durationButtons =
     document.querySelectorAll(
         ".duration-button"
@@ -108,43 +110,80 @@ const selectedDurationText =
         "selectedDuration"
     );
 
-durationButtons.forEach(
-    button => {
+function getDurationDisplayName(duration) {
+    switch (duration) {
+        case 0.25:
+            return "16분음표";
 
-        button.addEventListener(
-            "click",
-            () => {
+        case 0.5:
+            return "8분음표";
 
-                selectedDuration =
-                    Number(
-                        button.dataset.duration
-                    );
+        case 0.75:
+            return "점8분음표";
 
-                durationButtons.forEach(
-                    item => {
+        case 1:
+            return "4분음표";
 
-                        item.classList.remove(
-                            "active"
-                        );
+        case 2:
+            return "2분음표";
 
-                    }
-                );
+        case 3:
+            return "점2분음표";
 
-                button.classList.add(
-                    "active"
-                );
+        case 4:
+            return "온음표";
 
-                selectedDurationText.textContent =
-                    `${selectedDuration}박`;
-
-                statusText.textContent =
-                    `음표 길이 선택 : ${selectedDuration}박`;
-
-            }
-        );
-
+        default:
+            return `${duration}박`;
     }
-);
+}
+
+durationButtons.forEach(button => {
+    button.addEventListener("click", () => {
+
+        durationButtons.forEach(btn => {
+            btn.classList.remove("active");
+
+        });
+
+        button.classList.add("active");
+
+        selectedDuration = Number(button.dataset.duration);
+
+        selectedDurationText.textContent =
+            getDurationDisplayName(selectedDuration);
+    });
+});
+
+const tripletButton = 
+    document.getElementById("tripletButton");
+
+if (tripletButton) {
+    tripletButton.addEventListener(
+        "click",
+        () => {
+
+            tripletMode = !tripletMode;
+
+            tripletButton.classList.toggle(
+                "active",
+                tripletMode
+            );
+
+            if (tripletMode) {
+                selectedDurationText.textContent = 
+                    "셋잇단음표 (1박 ÷ 3)";
+            }
+            else {
+                selectedDurationText.textContent = 
+                    getDurationDisplayName(
+                        selectedDuration
+                    );
+            }
+
+        }
+    );
+}
 
 let composition = [];
 
@@ -1464,6 +1503,11 @@ function renderComposition() {
             noteSymbol.textContent = "♪";
 
         }
+        else if (duration <= 0.75) {
+
+            noteSymbol.textContent = "♪.";
+
+        }
         else if (duration <= 1) {
 
             noteSymbol.textContent = "♩";
@@ -1472,6 +1516,11 @@ function renderComposition() {
         else if (duration <= 2) {
 
             noteSymbol.textContent = "𝅗𝅥";
+
+        }
+        else if (duration <= 3) {
+
+            noteSymbol.textContent = "𝅗𝅥."
 
         }
         else {
