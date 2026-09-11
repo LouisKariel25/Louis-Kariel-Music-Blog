@@ -651,38 +651,58 @@ document.addEventListener(
 
 function addKeyboardNote(note) {
 
-    const cell =
-        [...document.querySelectorAll(
-            ".composer-cell"
-        )].find(
-            item =>
-                item.dataset.note === note &&
-                Number(
-                    item.dataset.step
-                ) === currentStep
-        );
-
-    if (!cell) {
-        return;
-    }
+    let targetStep =
+        currentStep;
 
     const maxDuration =
         getMaxDurationForStep(
-            currentStep
+            targetStep
         );
 
-    const actualDuration =
+    let actualDuration =
         Math.min(
             selectedDuration,
             maxDuration
         );
 
-    const offset =
+    let offset =
         getNextAvailableOffset(
             note,
-            currentStep,
+            targetStep,
             actualDuration
         );
+
+    if (offset === null) {
+
+        targetStep++;
+
+        if (
+            targetStep >= STEPS
+        ) {
+
+            targetStep = 0;
+
+        }
+
+        const nextMaxDuration =
+            getMaxDurationForStep(
+                targetStep
+            );
+
+        actualDuration =
+            Math.min(
+                selectedDuration,
+                nextMaxDuration
+            );
+
+        offset =
+            getNextAvailableOffset(
+                note,
+                targetStep,
+                actualDuration
+            );
+
+    }
 
     if (offset === null) {
 
@@ -701,7 +721,7 @@ function addKeyboardNote(note) {
             note,
 
         step:
-            currentStep,
+            targetStep,
 
         offsetBeats:
             offset,
@@ -715,7 +735,7 @@ function addKeyboardNote(note) {
         note;
 
     statusText.textContent =
-        `${acutalDuration}박 음표가 입력되었습니다.`;
+        `${actualDuration}박 음표가 입력되었습니다.`;
 
     playNote(
         note,
@@ -724,9 +744,63 @@ function addKeyboardNote(note) {
 
     renderComposition();
 
-    moveToNextStep();
+    const nextPosition =
+        offset +
+        actualDuration;
+
+    if (
+        nextPosition >= 1
+    ) {
+
+        currentStep =
+            targetStep +
+            Math.floor(
+                nextPosition
+            );
+
+        if (
+            currentStep >= STEPS
+        ) {
+
+            currentStep = 0;
+
+        }
+
+    }
+    else {
+
+        currentStep =
+            targetStep;
+
+    }
+
+    updateCurrentStep();
 
 }
+
+document.addEventListener(
+    "keydown",
+    event => {
+
+        if (event.repeat) {
+            return;
+        }
+
+        const note =
+            keyboardMap[
+            event.key.toLowerCase()
+            ];
+
+        if (!note) {
+            return;
+        }
+
+        addKeyboardNote(
+            note
+        );
+
+    }
+);
 
 function getNextAvailableOffset(
     note,
@@ -735,6 +809,12 @@ function getNextAvailableOffset(
 ) {
 
     const subdivisions = 4;
+
+    const measureStart =
+        Math.floor(step / 4) * 4;
+
+    const measureEnd =
+        measureStart + 4;
 
     for (
         let i = 0;
@@ -746,12 +826,17 @@ function getNextAvailableOffset(
             i / subdivisions;
 
         const newStart =
+            step +
             offset;
 
         const newEnd =
-            offset + duration;
+            newStart +
+            duration;
 
-        if (newEnd > 1) {
+        if (
+            newEnd >
+            measureEnd
+        ) {
             continue;
         }
 
@@ -760,8 +845,7 @@ function getNextAvailableOffset(
                 item => {
 
                     if (
-                        item.note !== note ||
-                        item.step !== step
+                        item.note !== note
                     ) {
                         return false;
                     }
@@ -774,15 +858,18 @@ function getNextAvailableOffset(
                         DEFAULT_NOTE_DURATION;
 
                     const existingStart =
+                        item.step +
                         existingOffset;
 
                     const existingEnd =
-                        existingOffset +
+                        existingStart +
                         existingDuration;
 
                     return (
-                        newStart < existingEnd &&
-                        newEnd > existingStart
+                        newStart <
+                        existingEnd &&
+                        newEnd >
+                        existingStart
                     );
 
                 }
@@ -816,14 +903,16 @@ function hasNoteCollision(
     note,
     step,
     durationBeats,
+    offsetBeats = 0,
     ignoredNotes = []
 ) {
 
     const newStart =
-        step;
+        step +
+        offsetBeats;
 
     const newEnd =
-        step +
+        newStart +
         durationBeats;
 
     return composition.some(
@@ -843,15 +932,20 @@ function hasNoteCollision(
                 return false;
             }
 
+            const existingOffset =
+                item.offsetBeats || 0;
+
+            const existingDuration =
+                item.durationBeats ||
+                DEFAULT_NOTE_DURATION;
+
             const existingStart =
-                item.step;
+                item.step +
+                existingOffset;
 
             const existingEnd =
-                item.step +
-                (
-                    item.durationBeats ||
-                    DEFAULT_NOTE_DURATION
-                );
+                existingStart +
+                existingDuration;
 
             return (
                 newStart < existingEnd &&
@@ -2133,62 +2227,18 @@ function setupNoteDrag(
                 movedNotes.some(
                     moved => {
 
-                        return composition.some(
-                            existing => {
+                        const ignoredNotes =
+                            selectedNotePositions.map(
+                                position =>
+                                    position.noteData
+                            );
 
-                                const isSelected =
-                                    selectedNotePositions.some(
-                                        position =>
-                                            position.noteData ===
-                                            existing
-                                    );
-
-                                if (
-                                    isSelected
-                                ) {
-                                    return false;
-                                }
-
-                                if (
-                                    existing.note !==
-                                    moved.note
-                                ) {
-                                    return false;
-                                }
-
-                                if (
-                                    existing.step !==
-                                    moved.step
-                                ) {
-                                    return false;
-                                }
-
-                                const existingStart =
-                                    existing.offsetBeats ||
-                                    0;
-
-                                const existingEnd =
-                                    existingStart +
-                                    (
-                                        existing.durationBeats ||
-                                        DEFAULT_NOTE_DURATION
-                                    );
-
-                                const movedStart =
-                                    moved.offsetBeats;
-
-                                const movedEnd =
-                                    movedStart +
-                                    moved.durationBeats;
-
-                                return (
-                                    movedStart <
-                                    existingEnd &&
-                                    movedEnd >
-                                    existingStart
-                                );
-
-                            }
+                        return hasNoteCollision(
+                            moved.note,
+                            moved.step,
+                            moved.durationBeats,
+                            moved.offsetBeats,
+                            ignoredNotes
                         );
 
                     }
@@ -2291,6 +2341,7 @@ function setupNoteResize(
     let startDuration = 0;
     let cellWidth = 0;
     let isResizing = false;
+    let originalDuration = 0;
 
     handle.addEventListener(
         "pointerdown",
@@ -2310,10 +2361,15 @@ function setupNoteResize(
                 noteData.durationBeats ||
                 DEFAULT_NOTE_DURATION;
 
+            originalDuration =
+                startDuration;
+
             cellWidth =
                 block.parentElement
                     .getBoundingClientRect()
                     .width;
+
+            saveUndoState();
 
             handle.setPointerCapture(
                 event.pointerId
@@ -2376,6 +2432,26 @@ function setupNoteResize(
                     newDuration * 4
                 ) / 4;
 
+            const collision =
+                hasNoteCollision(
+                    noteData.note,
+                    noteData.step,
+                    newDuration,
+                    offsetBeats,
+                    [
+                        noteData
+                    ]
+                );
+
+            if (collision) {
+
+                statusText.textContent =
+                    "다른 음표과 겹칠 수 없습니다.";
+
+                return;
+
+            }
+
             noteData.durationBeats =
                 newDuration;
 
@@ -2403,8 +2479,6 @@ function setupNoteResize(
 
         isResizing = false;
 
-        wasResizing = true;
-
         if (
             handle.hasPointerCapture(
                 event.pointerId
@@ -2420,6 +2494,42 @@ function setupNoteResize(
         block.classList.remove(
             "resizing"
         );
+
+        const finalDuration =
+            noteData.durationBeats ||
+            DEFAULT_NOTE_DURATION;
+
+        const offsetBeats =
+            noteData.offsetBeats ||
+            0;
+
+        const finalCollision =
+            hasNoteCollision(
+                noteData.note,
+                noteData.step,
+                finalDuration,
+                offsetBeats,
+                [
+                    noteData
+                ]
+            );
+
+        if (finalCollision) {
+
+            noteData.durationBeats =
+                originalDuration;
+
+            updateNoteBlockWidth(
+                block,
+                noteData
+            );
+
+            statusText.textContent =
+                "다른 음표와 겹칠 수 없어 원래 길이로 복구되었습니다.";
+
+            return;
+
+        }
 
         statusText.textContent =
             `음표 길이 : ${noteData.durationBeats}박`;
