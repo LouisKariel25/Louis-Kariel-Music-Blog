@@ -6,6 +6,8 @@ let bpm = 120;
 
 const STEPS = 16;
 
+let totalSteps = STEPS;
+
 const ROWS = 88;
 
 const DEFAULT_NOTE_DURATION = 1;
@@ -455,6 +457,11 @@ function createGrid() {
 
     pianoRoll.innerHTML = "";
 
+    pianoRoll.style.setProperty(
+        "--composer-steps",
+        totalSteps
+    );
+
     for (
         let row = 0;
         row < ROWS;
@@ -463,7 +470,7 @@ function createGrid() {
 
         for (
             let step = 0;
-            step < STEPS;
+            step < totalSteps;
             step++
         ) {
 
@@ -484,6 +491,12 @@ function createGrid() {
 
             cell.dataset.step =
                 step;
+
+            cell.style.gridColumn =
+                `${step + 1}`;
+
+            cell.style.gridRow =
+                `${row + 1}`;
 
             if (
                 note.includes("#")
@@ -526,6 +539,123 @@ function createGrid() {
 
 }
 
+let isExpandingGrid = false;
+
+function expandComposerGrid() {
+
+    if (isExpandingGrid) {
+        return;
+    }
+
+    isExpandingGrid = true;
+
+    const oldTotalSteps =
+        totalSteps;
+
+    const newTotalSteps =
+        totalSteps + 16;
+
+    totalSteps =
+        newTotalSteps;
+
+    pianoRoll.style.setProperty(
+        "--composer-steps",
+        totalSteps
+    );
+
+    createBeatLabels();
+
+    syncBeatLabelsWidth();
+
+    for (
+        let row = 0;
+        row < ROWS;
+        row++
+    ) {
+
+        for (
+            let step = oldTotalSteps;
+            step < newTotalSteps;
+            step++
+        ) {
+
+            const cell =
+                document.createElement(
+                    "div"
+                );
+
+            cell.classList.add(
+                "composer-cell"
+            );
+
+            const note =
+                noteList[row];
+
+            cell.dataset.note =
+                note;
+
+            cell.dataset.step =
+                step;
+
+            cell.style.gridColumn =
+                `${step + 1}`;
+
+            cell.style.gridRow =
+                `${row + 1}`;
+
+            if (
+                note.includes("#")
+            ) {
+
+                cell.classList.add(
+                    "black-row"
+                );
+
+            }
+
+            cell.addEventListener(
+                "click",
+                () => {
+
+                    if (wasResizing) {
+
+                        wasResizing = false;
+
+                        return;
+
+                    }
+
+                    if (wasDragging) {
+
+                        wasDragging = false;
+
+                        return;
+
+                    }
+
+                    toggleNote(
+                        cell
+                    );
+
+                }
+            );
+
+            pianoRoll.appendChild(
+                cell
+            );
+
+        }
+
+    }
+
+    console.log(
+        `🎼 작곡 영역 확장 : ${oldTotalSteps} → ${newTotalSteps}박`
+    );
+
+    isExpandingGrid = false;
+
+}
+
 function createLabels() {
 
     pianoLabels.innerHTML = "";
@@ -550,11 +680,100 @@ function createLabels() {
 
 }
 
+function createOctaveSeparators() {
+    const pianoLabels =
+        document.querySelector(".piano-labels");
+
+    const pianoRoll =
+        document.querySelector(".piano-roll");
+
+    if (!pianoLabels || !pianoRoll) {
+        return;
+    }
+
+    pianoLabels
+        .querySelectorAll(".octave-label")
+        .forEach(element => element.remove());
+
+    pianoRoll
+        .querySelectorAll(".octave-separator")
+        .forEach(element => element.remove());
+
+    const rowHeight = 42;
+
+    composerPianoKeys.forEach((key, index) => {
+
+        const noteName = key.name;
+
+        if (!noteName.startsWith("C")) {
+            return;
+        }
+
+        const octaveMatch =
+            noteName.match(/C(\d)$/);
+
+        if (!octaveMatch) {
+            return;
+        }
+
+        const octave =
+            Number(octaveMatch[1]);
+
+        const top =
+            index * rowHeight;
+
+        const separator =
+            document.createElement("div");
+
+        separator.className =
+            "octave-separator";
+
+        separator.style.color = "#888";
+
+        separator.style.top =
+            `${top}px`;
+
+        pianoRoll.appendChild(separator);
+
+        const label =
+            document.createElement("div");
+
+        label.className =
+            "octave-label";
+
+        label.textContent =
+            `${octave}옥타브`;
+
+        label.style.top =
+            `${top}px`;
+
+        pianoLabels.appendChild(label);
+    });
+}
+
 function createBeatLabels() {
 
     beatLabels.innerHTML = "";
 
-    for (let measure = 1; measure <= 4; measure++) {
+    const totalMeasures =
+        Math.ceil(
+            totalSteps / 4
+        );
+
+    beatLabels.style.width =
+        `${totalSteps * 120}px`;
+
+    beatLabels.style.display =
+        "grid";
+
+    beatLabels.style.gridTemplateColumns =
+        `repeat(${totalMeasures}, 480px)`;
+
+    for (
+        let measure = 1;
+        measure <= totalMeasures;
+        measure++
+    ) {
 
         const label =
             document.createElement("div");
@@ -576,11 +795,12 @@ function createBeatLabels() {
 
 function syncBeatLabelsWidth() {
 
-    const rollWidth =
-        pianoRoll.clientWidth;
+    if (!beatLabels) {
+        return;
+    }
 
     beatLabels.style.width =
-        `${rollWidth}px`;
+        `${totalSteps * 120}px`;
 
     beatLabels.style.flex =
         "none";
@@ -1731,6 +1951,20 @@ function renderComposition() {
 
         }
 
+        if (noteData.isTriplet) {
+
+            const tripletMark =
+                document.createElement("span");
+
+            tripletMark.className =
+                "triplet-mark";
+
+            tripletMark.textContent = "3";
+
+            block.appendChild(tripletMark);
+
+        }
+
         block.appendChild(
             noteSymbol
         );
@@ -2730,14 +2964,14 @@ function setupNoteResize(
                     ? 1 / 3
                     : 0.25;
 
-            newDuration
-            Math.max(
-                minDuration,
-                Math.min(
-                    maxDuration,
-                    newDuration
-                )
-            );
+            newDuration =
+                Math.max(
+                    minDuration,
+                    Math.min(
+                        maxDuration,
+                        newDuration
+                    )
+                );
 
             if (noteData.isTriplet) {
 
@@ -3199,11 +3433,47 @@ pianoRoll.addEventListener(
     }
 );
 
+pianoRoll.addEventListener(
+    "scroll",
+    () => {
+
+        if (beatLabels) {
+
+            beatLabels.style.transform =
+                `translateX(-${pianoRoll.scrollLeft}px)`;
+
+        }
+
+    }
+);
+
+pianoRoll.addEventListener(
+    "scroll",
+    () => {
+
+        const distanceFromRight =
+            pianoRoll.scrollWidth -
+            pianoRoll.scrollLeft -
+            pianoRoll.clientWidth;
+
+        if (
+            distanceFromRight < 500
+        ) {
+
+            expandComposerGrid();
+
+        }
+
+    }
+);
+
 createLabels();
 
 createBeatLabels();
 
 createGrid();
+
+createOctaveSeparators();
 
 syncBeatLabelsWidth();
 
