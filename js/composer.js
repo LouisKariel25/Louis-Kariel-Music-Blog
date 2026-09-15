@@ -191,6 +191,10 @@ let composition = [];
 
 let selectedNotes = [];
 
+const composerCellMap = new Map;
+
+const composerNoteBlockMap = new Map();
+
 document.addEventListener(
     "keydown",
     event => {
@@ -457,6 +461,8 @@ function createGrid() {
 
     pianoRoll.innerHTML = "";
 
+    composerCellMap.clear();
+
     pianoRoll.style.setProperty(
         "--composer-steps",
         totalSteps
@@ -491,6 +497,11 @@ function createGrid() {
 
             cell.dataset.step =
                 step;
+
+            composerCellMap.set(
+                `${note}|${step}`,
+                cell
+            );
 
             cell.style.gridColumn =
                 `${step + 1}`;
@@ -596,6 +607,11 @@ function expandComposerGrid() {
 
             cell.dataset.step =
                 step;
+
+            composerCellMap.set(
+                `${note}|${step}`,
+                cell
+            );
 
             cell.style.gridColumn =
                 `${step + 1}`;
@@ -893,7 +909,11 @@ function toggleNote(cell) {
             ? `셋잇단음표 입력 : ${offset === 0 ? "1번째" : offset < 0.5 ? "2번째" : "3번째"}`
             : `${actualDuration}박 음표가 입력되었습니다.`;
 
-    renderComposition();
+    renderSingleNote(
+        composition[
+        composition.length - 1
+        ]
+    );
 
 }
 
@@ -983,10 +1003,12 @@ function addKeyboardNote(note) {
         targetStep++;
 
         if (
-            targetStep >= STEPS
+            targetStep >= totalSteps
         ) {
 
-            targetStep = 0;
+            while (targetStep >= totalSteps) {
+                expandComposerGrid();
+            }
 
         }
 
@@ -1086,7 +1108,7 @@ function addKeyboardNote(note) {
             targetStep + 1;
 
         if (
-            currentStep >= STEPS
+            currentStep >= totalSteps
         ) {
 
             currentStep = 0;
@@ -1407,31 +1429,43 @@ function moveToNextStep() {
 
 }
 
+let previousCurrentStepCells = [];
+
 function updateCurrentStep() {
 
-    document
-        .querySelectorAll(
-            ".composer-cell"
-        )
-        .forEach(cell => {
+    previousCurrentStepCells.forEach(cell => {
 
-            cell.classList.remove(
-                "current-step"
+        cell.classList.remove(
+            "current-step"
+        );
+
+    });
+
+    previousCurrentStepCells = [];
+
+    for (let row = 0; row < ROWS; row++) {
+
+        const note =
+            noteList[row];
+
+        const cell =
+            composerCellMap.get(
+                `${note}|${currentStep}`
             );
 
-        });
+        if (!cell) {
+            continue;
+        }
 
-    document
-        .querySelectorAll(
-            `.composer-cell[data-step="${currentStep}"]`
-        )
-        .forEach(cell => {
+        cell.classList.add(
+            "current-step"
+        );
 
-            cell.classList.add(
-                "current-step"
-            );
+        previousCurrentStepCells.push(
+            cell
+        );
 
-        });
+    }
 
 }
 
@@ -1606,17 +1640,17 @@ function highlightStep(step) {
 
 function clearStepHighlight() {
 
-    document
-        .querySelectorAll(
-            ".composer-cell"
-        )
-        .forEach(cell => {
+    previousCurrentStepCells.forEach(
+        cell => {
 
             cell.classList.remove(
                 "current-step"
             );
 
-        });
+        }
+    );
+
+    previousCurrentStepCells = [];
 
 }
 
@@ -1777,6 +1811,280 @@ function restoreGrid() {
 
 }
 
+function renderSingleNote(noteData) {
+
+    const cell =
+        composerCellMap.get(
+            `${noteData.note}|${noteData.step}`
+        );
+
+    if (!cell) {
+        return;
+    }
+
+    cell.classList.add(
+        "active"
+    );
+
+    const block =
+        document.createElement(
+            "div"
+        );
+
+    block.classList.add(
+        "note-block"
+    );
+
+    block.noteData =
+        noteData;
+
+    block.addEventListener(
+        "click",
+        event => {
+
+            if (wasDragging) {
+
+                wasDragging = false;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                return;
+
+            }
+
+            if (
+                event.target.closest(
+                    ".note-resize-handle"
+                )
+            ) {
+                return;
+            }
+
+            if (
+                event.shiftKey ||
+                event.ctrlKey ||
+                event.metaKey
+            ) {
+                return;
+            }
+
+            event.stopPropagation();
+
+            saveUndoState();
+
+            const index =
+                composition.indexOf(
+                    noteData
+                );
+
+            if (index !== -1) {
+
+                composition.splice(
+                    index,
+                    1
+                );
+
+                const block =
+                    composerNoteBlockMap.get(
+                        noteData
+                    );
+
+                if (block) {
+
+                    block.remove();
+
+                    composerNoteBlockMap.delete(
+                        noteData
+                    );
+
+                }
+
+                if (
+                    !cell.querySelector(
+                        ".note-block"
+                    )
+                ) {
+
+                    cell.classList.remove(
+                        "active"
+                    );
+
+                }
+
+                selectedNotes =
+                    selectedNotes.filter(
+                        note =>
+                            note !== noteData
+                    );
+
+                statusText.textContent =
+                    "음표가 삭제되었습니다.";
+
+            }
+
+        }
+    );
+
+    const noteSymbol =
+        document.createElement(
+            "span"
+        );
+
+    noteSymbol.classList.add(
+        "note-symbol"
+    );
+
+    if (
+        noteData.durationBeats <= 0.25
+    ) {
+
+        noteSymbol.classList.add(
+            "short-note-symbol"
+        );
+
+    }
+    else if (
+        noteData.durationBeats <= 0.5
+    ) {
+
+        noteSymbol.classList.add(
+            "half-note-symbol"
+        );
+
+    }
+
+    const duration =
+        noteData.durationBeats ||
+        DEFAULT_NOTE_DURATION;
+
+    if (duration <= 0.25) {
+
+        noteSymbol.textContent =
+            "𝅘𝅥𝅯";
+
+    }
+    else if (duration <= 0.5) {
+
+        noteSymbol.textContent =
+            "♪";
+
+    }
+    else if (duration <= 0.75) {
+
+        noteSymbol.textContent =
+            "♪.";
+
+    }
+    else if (duration <= 1) {
+
+        noteSymbol.textContent =
+            "♩";
+
+    }
+    else if (duration <= 2) {
+
+        noteSymbol.textContent =
+            "𝅗𝅥";
+
+    }
+    else if (duration <= 3) {
+
+        noteSymbol.textContent =
+            "𝅗𝅥.";
+
+    }
+    else {
+
+        noteSymbol.textContent =
+            "𝅝";
+
+    }
+
+    if (noteData.isTriplet) {
+
+        const tripletMark =
+            document.createElement(
+                "span"
+            );
+
+        tripletMark.className =
+            "triplet-mark";
+
+        tripletMark.textContent =
+            "3";
+
+        block.appendChild(
+            tripletMark
+        );
+
+    }
+
+    block.appendChild(
+        noteSymbol
+    );
+
+    if (
+        selectedNotes.includes(
+            noteData
+        )
+    ) {
+
+        block.classList.add(
+            "selected"
+        );
+
+    }
+
+    const handle =
+        document.createElement(
+            "div"
+        );
+
+    handle.classList.add(
+        "note-resize-handle"
+    );
+
+    block.appendChild(
+        handle
+    );
+
+    cell.appendChild(
+        block
+    );
+
+    composerNoteBlockMap.set(
+        noteData,
+        block
+    );
+
+    updateNoteBlockWidth(
+        block,
+        noteData
+    );
+
+    const offsetBeats =
+        noteData.offsetBeats || 0;
+
+    const cellWidth =
+        cell.offsetWidth;
+
+    block.style.left =
+        `${cellWidth * offsetBeats}px`;
+
+    setupNoteDrag(
+        block,
+        noteData
+    );
+
+    setupNoteResize(
+        block,
+        handle,
+        noteData
+    );
+
+}
+
 function renderComposition() {
 
     document
@@ -1786,25 +2094,22 @@ function renderComposition() {
         });
 
     document
-        .querySelectorAll(".composer-cell")
-        .forEach(cell => {
-            cell.classList.remove(
-                "active"
-            );
-        });
+        .querySelectorAll(
+            ".composer-cell.active"
+        )
+        .forEach(
+            cell => {
+                cell.classList.remove(
+                    "active"
+                );
+            }
+        );
 
     composition.forEach(noteData => {
 
         const cell =
-            [...document.querySelectorAll(
-                ".composer-cell"
-            )].find(
-                item =>
-                    item.dataset.note ===
-                    noteData.note &&
-                    Number(
-                        item.dataset.step
-                    ) === noteData.step
+            composerCellMap.get(
+                `${noteData.note}|${noteData.step}`
             );
 
         if (!cell) {
@@ -2339,7 +2644,7 @@ function setupNoteDrag(
                         Math.max(
                             0,
                             Math.min(
-                                STEPS - 1,
+                                totalSteps - 1,
                                 previewStep
                             )
                         );
@@ -2409,7 +2714,7 @@ function setupNoteDrag(
                 Math.max(
                     0,
                     Math.min(
-                        STEPS - 1,
+                        totalSteps - 1,
                         previewStep
                     )
                 );
@@ -2568,7 +2873,7 @@ function setupNoteDrag(
                         ) {
 
                             targetStep =
-                                STEPS - 1;
+                                totalSteps - 1;
 
                             targetOffset =
                                 0.75;
@@ -2579,7 +2884,7 @@ function setupNoteDrag(
                             Math.max(
                                 0,
                                 Math.min(
-                                    STEPS - 1,
+                                    totalSteps - 1,
                                     targetStep
                                 )
                             );
@@ -3447,6 +3752,7 @@ pianoRoll.addEventListener(
     }
 );
 
+/*
 pianoRoll.addEventListener(
     "scroll",
     () => {
@@ -3466,6 +3772,7 @@ pianoRoll.addEventListener(
 
     }
 );
+*/
 
 createLabels();
 
