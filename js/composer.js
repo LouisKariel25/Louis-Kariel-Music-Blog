@@ -155,7 +155,7 @@ durationButtons.forEach(button => {
     });
 });
 
-const tripletButton = 
+const tripletButton =
     document.getElementById("tripletButton");
 
 if (tripletButton) {
@@ -171,11 +171,11 @@ if (tripletButton) {
             );
 
             if (tripletMode) {
-                selectedDurationText.textContent = 
+                selectedDurationText.textContent =
                     "셋잇단음표 (1박 ÷ 3)";
             }
             else {
-                selectedDurationText.textContent = 
+                selectedDurationText.textContent =
                     getDurationDisplayName(
                         selectedDuration
                     );
@@ -597,26 +597,48 @@ function toggleNote(cell) {
             cell.dataset.step
         );
 
-    const maxDuration =
-        getMaxDurationForStep(step);
+    let actualDuration;
+    let offset;
 
-    const actualDuration =
-        Math.min(
-            selectedDuration,
-            maxDuration
-        );
+    if (tripletMode) {
 
-    const offset =
-        getNextAvailableOffset(
-            note,
-            step,
-            actualDuration
-        );
+        actualDuration =
+            1 / 3;
+
+        offset =
+            getNextTripletOffset(
+                note,
+                step
+            );
+
+    }
+
+    else {
+
+        const maxDuration =
+            getMaxDurationForStep(step);
+
+        actualDuration =
+            Math.min(
+                selectedDuration,
+                maxDuration
+            );
+
+        offset =
+            getNextAvailableOffset(
+                note,
+                step,
+                actualDuration
+            );
+
+    }
 
     if (offset === null) {
 
         statusText.textContent =
-            "이 박에 더이상 음표를 넣을 공간이 없습니다.";
+            tripletMode
+                ? "이 박에는 셋잇단음표를 더 넣을 공간이 없습니다."
+                : "이 박에 더이상 음표를 넣을 공간이 없습니다.";
 
         return;
 
@@ -636,7 +658,10 @@ function toggleNote(cell) {
             offset,
 
         durationBeats:
-            actualDuration
+            actualDuration,
+
+        isTriplet:
+            tripletMode
 
     });
 
@@ -644,7 +669,9 @@ function toggleNote(cell) {
         note;
 
     statusText.textContent =
-        `${actualDuration}박 음표가 입력되었습니다.`;
+        tripletMode
+            ? `셋잇단음표 입력 : ${offset === 0 ? "1번째" : offset < 0.5 ? "2번째" : "3번째"}`
+            : `${actualDuration}박 음표가 입력되었습니다.`;
 
     renderComposition();
 
@@ -693,37 +720,25 @@ function addKeyboardNote(note) {
     let targetStep =
         currentStep;
 
-    const maxDuration =
-        getMaxDurationForStep(
-            targetStep
-        );
+    let actualDuration;
+    let offset;
 
-    let actualDuration =
-        Math.min(
-            selectedDuration,
-            maxDuration
-        );
+    if (tripletMode) {
 
-    let offset =
-        getNextAvailableOffset(
-            note,
-            targetStep,
-            actualDuration
-        );
+        actualDuration =
+            1 / 3;
 
-    if (offset === null) {
+        offset =
+            getNextTripletOffset(
+                note,
+                targetStep
+            );
 
-        targetStep++;
+    }
 
-        if (
-            targetStep >= STEPS
-        ) {
+    else {
 
-            targetStep = 0;
-
-        }
-
-        const nextMaxDuration =
+        const maxDuration =
             getMaxDurationForStep(
                 targetStep
             );
@@ -731,7 +746,7 @@ function addKeyboardNote(note) {
         actualDuration =
             Math.min(
                 selectedDuration,
-                nextMaxDuration
+                maxDuration
             );
 
         offset =
@@ -745,8 +760,59 @@ function addKeyboardNote(note) {
 
     if (offset === null) {
 
+        targetStep++;
+
+        if (
+            targetStep >= STEPS
+        ) {
+
+            targetStep = 0;
+
+        }
+
+        if (tripletMode) {
+
+            actualDuration =
+                1 / 3;
+
+            offset =
+                getNextTripletOffset(
+                    note,
+                    targetStep
+                );
+
+        }
+
+        else {
+
+            const nextMaxDuration =
+                getMaxDurationForStep(
+                    targetStep
+                );
+
+            actualDuration =
+                Math.min(
+                    selectedDuration,
+                    nextMaxDuration
+                );
+
+            offset =
+                getNextAvailableOffset(
+                    note,
+                    targetStep,
+                    actualDuration
+                );
+
+        }
+
+    }
+
+    if (offset === null) {
+
         statusText.textContent =
-            "이 박에 더 이상 음표를 넣을 공간이 없습니다.";
+            tripletMode
+                ? "셋잇단음표를 입력할 공간이 없습니다."
+                : "이 박에 더 이상 음표를 넣을 공간이 없습니다.";
 
         return;
 
@@ -766,7 +832,10 @@ function addKeyboardNote(note) {
             offset,
 
         durationBeats:
-            actualDuration
+            actualDuration,
+
+        isTriplet:
+            tripletMode
 
     });
 
@@ -774,7 +843,9 @@ function addKeyboardNote(note) {
         note;
 
     statusText.textContent =
-        `${actualDuration}박 음표가 입력되었습니다.`;
+        tripletMode
+            ? `셋잇단음표 입력 : ${offset === 0 ? "1번째" : offset < 0.5 ? "2번째" : "3번째"}`
+            : `${actualDuration}박 음표가 입력되었습니다.`;
 
     playNote(
         note,
@@ -792,10 +863,7 @@ function addKeyboardNote(note) {
     ) {
 
         currentStep =
-            targetStep +
-            Math.floor(
-                nextPosition
-            );
+            targetStep + 1;
 
         if (
             currentStep >= STEPS
@@ -806,6 +874,7 @@ function addKeyboardNote(note) {
         }
 
     }
+
     else {
 
         currentStep =
@@ -840,6 +909,104 @@ document.addEventListener(
 
     }
 );
+
+function getNextTripletOffset(
+    note,
+    step
+) {
+
+    const tripletDuration =
+        1 / 3;
+
+    const tripletSlots = [
+        0,
+        1,
+        2
+    ];
+
+    const beatStart =
+        step;
+
+    const measureStart =
+        Math.floor(step / 4) * 4;
+
+    const measureEnd =
+        measureStart + 4;
+
+    for (
+        const slot of tripletSlots
+    ) {
+
+        const offset =
+            slot * tripletDuration;
+
+        const newStart =
+            beatStart +
+            offset;
+
+        const newEnd =
+            newStart +
+            tripletDuration;
+
+        if (
+            newEnd >
+            measureEnd + 0.000001
+        ) {
+            continue;
+        }
+
+        const collision =
+            composition.some(
+                item => {
+
+                    if (
+                        item.note !== note
+                    ) {
+                        return false;
+                    }
+
+                    const existingOffset =
+                        typeof item.offsetBeats === 'number'
+                            ? item.offsetBeats
+                            : 0;
+
+                    const existingDuration =
+                        typeof item.durationBeats === "number"
+                            ? item.durationBeats
+                            : DEFAULT_NOTE_DURATION;
+
+                    const existingStart =
+                        item.step +
+                        existingOffset;
+
+                    const existingEnd =
+                        existingStart +
+                        existingDuration;
+
+                    const epsilon =
+                        0.000001;
+
+                    return (
+                        newStart <
+                        existingEnd - epsilon &&
+                        newEnd >
+                        existingStart + epsilon
+                    );
+
+                }
+            );
+
+        if (!collision) {
+
+            return offset;
+
+        }
+
+    }
+
+    return null;
+
+}
 
 function getNextAvailableOffset(
     note,
@@ -1098,10 +1265,60 @@ function startPlayback() {
     isPlaying = true;
 
     statusText.textContent =
-        "▶ 작곡한 곡을 재생 중입니다."
+        "▶ 작곡한 곡을 재생 중입니다.";
 
     const beatDuration =
         60000 / bpm;
+
+    let longestEndBeat = 0;
+
+    composition.forEach(
+        item => {
+
+            const offset =
+                item.offsetBeats || 0;
+
+            const duration =
+                item.durationBeats ||
+                DEFAULT_NOTE_DURATION;
+
+            const absoluteBeat =
+                item.step +
+                offset;
+
+            const delay =
+                absoluteBeat *
+                beatDuration;
+
+            const timer =
+                setTimeout(
+                    () => {
+
+                        playNote(
+                            item.note,
+                            duration
+                        );
+
+                    },
+                    delay
+                );
+
+            playbackTimers.push(
+                timer
+            );
+
+            const endBeat =
+                absoluteBeat +
+                duration;
+
+            longestEndBeat =
+                Math.max(
+                    longestEndBeat,
+                    endBeat
+                );
+
+        }
+    );
 
     for (
         let step = 0;
@@ -1109,28 +1326,12 @@ function startPlayback() {
         step++
     ) {
 
-        const notesAtStep =
-            composition.filter(
-                item =>
-                    item.step === step
-            );
-
         const timer =
             setTimeout(
                 () => {
 
                     highlightStep(
                         step
-                    );
-
-                    notesAtStep.forEach(
-                        item => {
-                            playNote(
-                                item.note,
-                                item.durationBeats ||
-                                DEFAULT_NOTE_DURATION
-                            );
-                        }
                     );
 
                 },
@@ -1155,7 +1356,8 @@ function startPlayback() {
                 clearStepHighlight();
 
             },
-            STEPS * beatDuration
+            longestEndBeat *
+            beatDuration
         );
 
     playbackTimers.push(
@@ -1819,10 +2021,24 @@ function setupNoteDrag(
                 deltaX /
                 cellWidth;
 
-            const snappedDelta =
-                Math.round(
-                    deltaBeats * 4
-                ) / 4;
+            let snappedDelta;
+
+            if (noteData.isTriplet) {
+
+                snappedDelta =
+                    Math.round(
+                        deltaBeats * 3
+                    ) / 3;
+
+            }
+            else {
+
+                snappedDelta =
+                    Math.round(
+                        deltaBeats * 4
+                    ) / 4;
+
+            }
 
             const deltaRows =
                 Math.round(
@@ -1859,10 +2075,22 @@ function setupNoteDrag(
                         position.step +
                         previewOffset;
 
-                    totalPosition =
-                        Math.round(
-                            totalPosition * 4
-                        ) / 4;
+                    if (noteData.isTriplet) {
+
+                        totalPosition =
+                            Math.round(
+                                totalPosition * 3
+                            ) / 3;
+
+                    }
+                    else {
+
+                        totalPosition =
+                            Math.round(
+                                totalPosition * 4
+                            ) / 4;
+
+                    }
 
                     let previewStep =
                         Math.floor(
@@ -1890,6 +2118,15 @@ function setupNoteDrag(
                                 previewSubBeat
                             )
                         );
+
+                    if (noteData.isTriplet) {
+
+                        previewSubBeat =
+                            Math.round(
+                                previewSubBeat * 3
+                            ) / 3;
+
+                    }
 
                     const visualDeltaX =
                         (
@@ -2065,10 +2302,22 @@ function setupNoteDrag(
                             position.offset +
                             snappedDelta;
 
-                        totalPosition =
-                            Math.round(
-                                totalPosition * 4
-                            ) / 4;
+                        if (position.noteData.isTriplet) {
+
+                            totalPosition =
+                                Math.round(
+                                    totalPosition * 3
+                                ) / 3;
+
+                        }
+                        else {
+
+                            totalPosition =
+                                Math.round(
+                                    totalPosition * 4
+                                ) / 4;
+
+                        }
 
                         let targetStep =
                             Math.floor(
@@ -2109,6 +2358,15 @@ function setupNoteDrag(
                                     targetOffset
                                 )
                             );
+
+                        if (position.noteData.isTriplet) {
+
+                            targetOffset =
+                                Math.round(
+                                    targetOffset * 3
+                                ) / 3;
+
+                        }
 
                         let targetRow =
                             position.row +
@@ -2467,19 +2725,36 @@ function setupNoteResize(
                 getMaxDurationForStep(step) -
                 offsetBeats;
 
-            newDuration =
-                Math.max(
-                    0.25,
-                    Math.min(
-                        maxDuration,
-                        newDuration
-                    )
-                );
+            const minDuration =
+                noteData.isTriplet
+                    ? 1 / 3
+                    : 0.25;
 
-            newDuration =
-                Math.round(
-                    newDuration * 4
-                ) / 4;
+            newDuration
+            Math.max(
+                minDuration,
+                Math.min(
+                    maxDuration,
+                    newDuration
+                )
+            );
+
+            if (noteData.isTriplet) {
+
+                newDuration =
+                    Math.round(
+                        newDuration * 3
+                    ) / 3;
+
+            }
+            else {
+
+                newDuration =
+                    Math.round(
+                        newDuration * 4
+                    ) / 4;
+
+            }
 
             const collision =
                 hasNoteCollision(
