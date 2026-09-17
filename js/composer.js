@@ -193,6 +193,8 @@ let selectedNotes = [];
 
 const composerCellMap = new Map;
 
+const activeComposerCells = new Set();
+
 const composerNoteBlockMap = new Map();
 
 document.addEventListener(
@@ -253,10 +255,22 @@ let playbackTimers = [];
 
 function saveUndoState() {
 
-    undoStack.push(
+    const currentState =
         JSON.stringify(
             composition
-        )
+        );
+
+    if (
+        undoStack.length > 0 &&
+        undoStack[
+        undoStack.length - 1
+        ] === currentState
+    ) {
+        return;
+    }
+
+    undoStack.push(
+        currentState
     );
 
     if (
@@ -664,6 +678,8 @@ function expandComposerGrid() {
 
     }
 
+    createOctaveSeparators();
+
     console.log(
         `🎼 작곡 영역 확장 : ${oldTotalSteps} → ${newTotalSteps}박`
     );
@@ -763,6 +779,11 @@ function createOctaveSeparators() {
         label.style.top =
             `${top}px`;
 
+        if (octave === 8) {
+            label.style.transform =
+                "translateY(0)";
+        }
+
         pianoLabels.appendChild(label);
     });
 }
@@ -820,6 +841,17 @@ function syncBeatLabelsWidth() {
 
     beatLabels.style.flex =
         "none";
+
+}
+
+function syncPianoLabelsHeight() {
+
+    if (!pianoLabels || !pianoRoll) {
+        return;
+    }
+
+    pianoLabels.style.height =
+        `${pianoRoll.clientHeight}px`;
 
 }
 
@@ -1133,6 +1165,13 @@ document.addEventListener(
     event => {
 
         if (event.repeat) {
+            return;
+        }
+
+        if (
+            event.ctrlKey ||
+            event.metaKey
+        ) {
             return;
         }
 
@@ -1782,49 +1821,135 @@ function loadComposition() {
 
 function restoreGrid() {
 
-    document
-        .querySelectorAll(
-            ".composer-cell"
-        )
-        .forEach(cell => {
+    activeComposerCells.forEach(
+        cell => {
 
-            const exists =
-                composition.some(
-                    item =>
-                        item.note ===
-                        cell.dataset.note &&
-                        item.step ===
-                        Number(
-                            cell.dataset.step
-                        )
-                );
+            cell.classList.remove(
+                "active"
+            );
 
-            if (exists) {
+        }
+    );
 
-                cell.classList.add(
-                    "active"
-                );
+    activeComposerCells.clear();
 
-            }
+    composition.forEach(noteData => {
 
-        });
+        const cell =
+            composerCellMap.get(
+                `${noteData.note}|${noteData.step}`
+            );
+
+        if (!cell) {
+            return;
+        }
+
+        cell.classList.add(
+            "active"
+        );
+
+        activeComposerCells.add(
+            cell
+        );
+
+    });
 
 }
 
-function renderSingleNote(noteData) {
+function updateNoteSymbol(
+    block,
+    noteData
+) {
 
-    const cell =
-        composerCellMap.get(
-            `${noteData.note}|${noteData.step}`
+    const noteSymbol =
+        block.querySelector(
+            ".note-symbol"
         );
 
-    if (!cell) {
+    if (!noteSymbol) {
         return;
     }
 
-    cell.classList.add(
-        "active"
+    noteSymbol.classList.remove(
+        "short-note-symbol",
+        "half-note-symbol"
     );
+
+    const duration =
+        noteData.durationBeats ||
+        DEFAULT_NOTE_DURATION;
+
+    if (duration <= 0.25) {
+
+        noteSymbol.textContent =
+            "𝅘𝅥𝅯";
+
+        noteSymbol.classList.add(
+            "short-note-symbol"
+        );
+
+    }
+    else if (duration <= 0.5) {
+
+        noteSymbol.textContent =
+            "♪";
+
+        noteSymbol.classList.add(
+            "half-note-symbol"
+        );
+
+    }
+    else if (duration <= 0.75) {
+
+        noteSymbol.textContent =
+            "♪.";
+
+    }
+    else if (duration <= 1) {
+
+        noteSymbol.textContent =
+            "♩";
+
+    }
+    else if (duration <= 2) {
+
+        noteSymbol.textContent =
+            "𝅗𝅥";
+
+    }
+    else if (duration <= 3) {
+
+        noteSymbol.textContent =
+            "𝅗𝅥.";
+
+    }
+    else {
+
+        noteSymbol.textContent =
+            "𝅝";
+
+    }
+
+    const tripletMark =
+        block.querySelector(
+            ".triplet-mark"
+        );
+
+    if (tripletMark) {
+
+        tripletMark.style.display =
+            noteData.isTriplet
+                ? ""
+                : "none";
+
+    }
+
+}
+
+function createNoteBlock(
+    noteData,
+    cell
+) {
 
     const block =
         document.createElement(
@@ -1837,94 +1962,6 @@ function renderSingleNote(noteData) {
 
     block.noteData =
         noteData;
-
-    block.addEventListener(
-        "click",
-        event => {
-
-            if (wasDragging) {
-
-                wasDragging = false;
-
-                event.preventDefault();
-                event.stopPropagation();
-
-                return;
-
-            }
-
-            if (
-                event.target.closest(
-                    ".note-resize-handle"
-                )
-            ) {
-                return;
-            }
-
-            if (
-                event.shiftKey ||
-                event.ctrlKey ||
-                event.metaKey
-            ) {
-                return;
-            }
-
-            event.stopPropagation();
-
-            saveUndoState();
-
-            const index =
-                composition.indexOf(
-                    noteData
-                );
-
-            if (index !== -1) {
-
-                composition.splice(
-                    index,
-                    1
-                );
-
-                const block =
-                    composerNoteBlockMap.get(
-                        noteData
-                    );
-
-                if (block) {
-
-                    block.remove();
-
-                    composerNoteBlockMap.delete(
-                        noteData
-                    );
-
-                }
-
-                if (
-                    !cell.querySelector(
-                        ".note-block"
-                    )
-                ) {
-
-                    cell.classList.remove(
-                        "active"
-                    );
-
-                }
-
-                selectedNotes =
-                    selectedNotes.filter(
-                        note =>
-                            note !== noteData
-                    );
-
-                statusText.textContent =
-                    "음표가 삭제되었습니다.";
-
-            }
-
-        }
-    );
 
     const noteSymbol =
         document.createElement(
@@ -2005,7 +2042,7 @@ function renderSingleNote(noteData) {
 
         const tripletMark =
             document.createElement(
-                "span"
+                "Span"
             );
 
         tripletMark.className =
@@ -2083,27 +2120,148 @@ function renderSingleNote(noteData) {
         noteData
     );
 
+    return block;
+
+}
+
+function renderSingleNote(noteData) {
+
+    const cell =
+        composerCellMap.get(
+            `${noteData.note}|${noteData.step}`
+        );
+
+    if (!cell) {
+        return;
+    }
+
+    cell.classList.add(
+        "active"
+    );
+
+    activeComposerCells.add(
+        cell
+    );
+
+    const block =
+        createNoteBlock(
+            noteData,
+            cell
+        );
+
+    block.addEventListener(
+        "click",
+        event => {
+
+            if (wasDragging) {
+
+                wasDragging = false;
+
+                event.preventDefault();
+                event.stopPropagation();
+
+                return;
+
+            }
+
+            if (
+                event.target.closest(
+                    ".note-resize-handle"
+                )
+            ) {
+                return;
+            }
+
+            if (
+                event.shiftKey ||
+                event.ctrlKey ||
+                event.metaKey
+            ) {
+                return;
+            }
+
+            event.stopPropagation();
+
+            saveUndoState();
+
+            const index =
+                composition.indexOf(
+                    noteData
+                );
+
+            if (index !== -1) {
+
+                composition.splice(
+                    index,
+                    1
+                );
+
+                const block =
+                    composerNoteBlockMap.get(
+                        noteData
+                    );
+
+                if (block) {
+
+                    block.remove();
+
+                    composerNoteBlockMap.delete(
+                        noteData
+                    );
+
+                }
+
+                if (!cell.querySelector(".note-block")) {
+
+                    cell.classList.remove(
+                        "active"
+                    );
+
+                    activeComposerCells.delete(
+                        cell
+                    );
+
+                }
+
+                selectedNotes =
+                    selectedNotes.filter(
+                        note =>
+                            note !== noteData
+                    );
+
+                statusText.textContent =
+                    "음표가 삭제되었습니다.";
+
+            }
+
+        }
+    );
+
 }
 
 function renderComposition() {
 
-    document
-        .querySelectorAll(".note-block")
-        .forEach(block => {
-            block.remove();
-        });
+    composerNoteBlockMap.forEach(
+        block => {
 
-    document
-        .querySelectorAll(
-            ".composer-cell.active"
-        )
-        .forEach(
-            cell => {
-                cell.classList.remove(
-                    "active"
-                );
-            }
-        );
+            block.remove();
+
+        }
+    );
+
+    composerNoteBlockMap.clear();
+
+    activeComposerCells.forEach(
+        cell => {
+
+            cell.classList.remove(
+                "active"
+            );
+
+        }
+    );
+
+    activeComposerCells.clear();
 
     composition.forEach(noteData => {
 
@@ -2118,6 +2276,10 @@ function renderComposition() {
 
         cell.classList.add(
             "active"
+        );
+
+        activeComposerCells.add(
+            cell
         );
 
         const block =
@@ -2301,6 +2463,11 @@ function renderComposition() {
             block
         );
 
+        composerNoteBlockMap.set(
+            noteData,
+            block
+        );
+
         updateNoteBlockWidth(
             block,
             noteData
@@ -2310,7 +2477,7 @@ function renderComposition() {
             noteData.offsetBeats || 0;
 
         const cellWidth =
-            cell.getBoundingClientRect().width;
+            cell.offsetWidth;
 
         block.style.left =
             `${cellWidth * offsetBeats}px`;
@@ -3265,9 +3432,7 @@ function setupNoteResize(
                 offsetBeats;
 
             const minDuration =
-                noteData.isTriplet
-                    ? 1 / 3
-                    : 0.25;
+                0.25;
 
             newDuration =
                 Math.max(
@@ -3280,20 +3445,14 @@ function setupNoteResize(
 
             if (noteData.isTriplet) {
 
-                newDuration =
-                    Math.round(
-                        newDuration * 3
-                    ) / 3;
+                noteData.isTriplet = false;
 
             }
-            else {
 
-                newDuration =
-                    Math.round(
-                        newDuration * 4
-                    ) / 4;
-
-            }
+            newDuration =
+                Math.round(
+                    newDuration * 4
+                ) / 4;
 
             const collision =
                 hasNoteCollision(
@@ -3319,6 +3478,11 @@ function setupNoteResize(
                 newDuration;
 
             updateNoteBlockWidth(
+                block,
+                noteData
+            );
+
+            updateNoteSymbol(
                 block,
                 noteData
             );
@@ -3383,6 +3547,11 @@ function setupNoteResize(
                 originalDuration;
 
             updateNoteBlockWidth(
+                block,
+                noteData
+            );
+
+            updateNoteSymbol(
                 block,
                 noteData
             );
@@ -3784,6 +3953,8 @@ createOctaveSeparators();
 
 syncBeatLabelsWidth();
 
+syncPianoLabelsHeight();
+
 loadComposition();
 
 updateCurrentStep();
@@ -3804,7 +3975,11 @@ if (
 window.addEventListener(
     "resize",
     () => {
+
         syncBeatLabelsWidth();
+
+        syncPianoLabelsHeight();
+
     }
 );
 

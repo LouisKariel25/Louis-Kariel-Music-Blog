@@ -544,7 +544,8 @@
 .octave-separator {
     position: absolute;
     left: 0;
-    right: 0;
+    right: auto;
+    width: calc(var(--composer-steps, 16) * 120px);
     height: 0;
     border-top: 3px solid currentColor;
     pointer-events: none;
