@@ -78,7 +78,7 @@
 }
 
 .note-duration-control {
-    max-width: 700px;
+    max-width: 920px;
     margin: 0 auto 20px;
     display: flex;
     align-items: center;
@@ -108,7 +108,7 @@
     border-radius: 18px;
     background: #faf9f6;
     color: #555;
-    font-size: 12px;
+    font-size: 25px;
     cursor: pointer;
     transition:
         background 0.15s,
@@ -532,13 +532,39 @@
     z-index: 30;
 }
 
-.tuplet-button {
+.tuplet-button,
+#restModeButton {
+    min-width: 90px;
+    min-height: 36px;
+    padding: 8px 14px;
+    border: 1px solid #d5cec2;
+    border-radius: 18px;
+    background: #faf9f6;
+    color: #555;
+    font-size: 12px;
     cursor: pointer;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    box-sizing: border-box;
 }
 
-.tuplet-button.active {
-    font-weight: bold;
-    transform: translateY(-1px);
+.tuplet-button:hover,
+#restModeButton:hover {
+    background: #eee9df;
+}
+
+.tuplet-button.active,
+#restModeButton.active {
+    background: #1e1e1e;
+    border-color: #1e1e1e;
+    color: white;
+    font-weight: 600;
+}
+
+.tuplet-button {
+    cursor: pointer;
 }
 
 .octave-separator {
@@ -579,4 +605,39 @@
 
 .piano-roll::-webkit-scrollbar-thumb:hover {
     background: #a58b68;
+}
+
+.rest-block {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid #888;
+    border-radius: 6px;
+    box-sizing: border-box;
+    z-index: 20;
+    pointer-events: auto;
+}
+
+.rest-symbol {
+    font-size: 28px;
+    line-height: 1;
+    color: #222;
+    pointer-events: none;
+    user-select: none;
+}
+
+.rest-resize-handle {
+    position: absolute;
+    right: 0;
+    top: 0;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+    background: transparent;
+    z-index: 30;
 }

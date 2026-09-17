@@ -93,12 +93,100 @@ const statusText =
         "statusText"
     );
 
+const restModeButton =
+    document.getElementById(
+        "restModeButton"
+    );
+
+let restMode = false;
+
+if (restModeButton) {
+
+    restModeButton.addEventListener(
+        "click",
+        () => {
+
+            restMode =
+                !restMode;
+
+            restModeButton.classList.toggle(
+                "active",
+                restMode
+            );
+
+            const durationTitle =
+                document.querySelector(
+                    ".note-duration-title"
+                );
+
+            if (restMode) {
+
+                restModeButton.textContent =
+                    "음표";
+
+                if (durationTitle) {
+
+                    durationTitle.textContent =
+                        "쉼표 길이";
+
+                }
+
+                if (
+                    selectedDuration !== null
+                ) {
+
+                    selectedDurationText.textContent =
+                        getRestDurationDisplayName(
+                            selectedDuration
+                        );
+
+                }
+
+                statusText.textContent =
+                    "쉼표 입력 모드";
+
+            }
+            else {
+
+                restModeButton.textContent =
+                    "쉼표";
+
+                if (durationTitle) {
+
+                    durationTitle.textContent =
+                        "음표 길이";
+
+                }
+
+                if (
+                    selectedDuration !== null
+                ) {
+
+                    selectedDurationText.textContent =
+                        getDurationDisplayName(
+                            selectedDuration
+                        );
+
+                }
+
+                statusText.textContent =
+                    "음표 입력 모드";
+
+            }
+
+            updateDurationButtonSymbols();
+
+        }
+    );
+
+}
+
 const selectedNote =
     document.getElementById(
         "selectedNote"
     );
 
-let selectedDuration = 1;
+let selectedDuration = null;
 
 let tripletMode = false;
 
@@ -136,25 +224,89 @@ function getDurationDisplayName(duration) {
             return "온음표";
 
         default:
-            return `${duration}박`;
+            return `${duration}박 음표`;
     }
 }
 
+function getRestDurationDisplayName(
+    duration
+) {
+
+    switch (duration) {
+
+        case 0.25:
+            return "16분쉼표";
+
+        case 0.5:
+            return "8분쉼표";
+
+        case 0.75:
+            return "점8분쉼표";
+
+        case 1:
+            return "4분쉼표";
+
+        case 2:
+            return "2분쉼표";
+
+        case 3:
+            return "점2분쉼표";
+
+        case 4:
+            return "온쉼표";
+
+        default:
+            return `${duration}박 쉼표`;
+
+    }
+
+}
+
 durationButtons.forEach(button => {
-    button.addEventListener("click", () => {
 
-        durationButtons.forEach(btn => {
-            btn.classList.remove("active");
+    button.addEventListener(
+        "click",
+        () => {
 
-        });
+            durationButtons.forEach(
+                btn => {
 
-        button.classList.add("active");
+                    btn.classList.remove(
+                        "active"
+                    );
 
-        selectedDuration = Number(button.dataset.duration);
+                }
+            );
 
-        selectedDurationText.textContent =
-            getDurationDisplayName(selectedDuration);
-    });
+            button.classList.add(
+                "active"
+            );
+
+            selectedDuration =
+                Number(
+                    button.dataset.duration
+                );
+
+            if (restMode) {
+
+                selectedDurationText.textContent =
+                    getRestDurationDisplayName(
+                        selectedDuration
+                    );
+
+            }
+            else {
+
+                selectedDurationText.textContent =
+                    getDurationDisplayName(
+                        selectedDuration
+                    );
+
+            }
+
+        }
+    );
+
 });
 
 const tripletButton =
@@ -164,6 +316,12 @@ if (tripletButton) {
     tripletButton.addEventListener(
         "click",
         () => {
+
+            if (restMode) {
+                statusText.textContent =
+                    "셋잇단음표 입력 모드는 음표 입력 모드 내에서만 사용 가능합니다.";
+                return;
+            }
 
             tripletMode = !tripletMode;
 
@@ -176,15 +334,29 @@ if (tripletButton) {
                 selectedDurationText.textContent =
                     "셋잇단음표 (1박 ÷ 3)";
             }
+
             else {
-                selectedDurationText.textContent =
-                    getDurationDisplayName(
-                        selectedDuration
-                    );
+
+                if (selectedDuration === null) {
+
+                    selectedDurationText.textContent =
+                        "-";
+
+                }
+
+                else {
+
+                    selectedDurationText.textContent =
+                        getDurationDisplayName(
+                            selectedDuration
+                        );
+                }
+
             }
 
         }
     );
+
 }
 
 let composition = [];
@@ -865,6 +1037,44 @@ function toggleNote(cell) {
             cell.dataset.step
         );
 
+    if (selectedDuration === null) {
+        statusText.textContent =
+            "입력할 음표나 쉼표를 먼저 선택해주세요.";
+        return;
+    }
+
+    if (restMode) {
+
+        const restData =
+            createRestData(
+                step,
+                selectedDuration
+            );
+
+        saveUndoState();
+
+        composition.push({
+            ...restData,
+
+            note:
+                note,
+
+            step:
+                step,
+
+            offsetBeats:
+                0
+        });
+
+        renderComposition();
+
+        statusText.textContent =
+            `${selectedDuration}박 쉼표가 입력되었습니다.`;
+
+        return;
+
+    }
+
     let actualDuration;
     let offset;
 
@@ -988,6 +1198,15 @@ document.addEventListener(
 );
 
 function addKeyboardNote(note) {
+
+    if (selectedDuration === null) {
+
+        statusText.textContent =
+            "음표를 먼저 선택해주세요.";
+
+        return;
+
+    }
 
     let targetStep =
         currentStep;
@@ -1587,6 +1806,10 @@ function startPlayback() {
                 setTimeout(
                     () => {
 
+                        if (item.type === "rest") {
+                            return;
+                        }
+
                         playNote(
                             item.note,
                             duration
@@ -1946,6 +2169,400 @@ function updateNoteSymbol(
 
 }
 
+function createRestData(
+    startStep,
+    durationBeats = DEFAULT_NOTE_DURATION
+) {
+
+    return {
+        type: "rest",
+
+        startStep: startStep,
+
+        durationBeats: durationBeats,
+
+        isTriplet: false
+    };
+
+}
+
+function createRestBlock(restData, cell) {
+
+    const block =
+        document.createElement("div");
+
+    block.className =
+        "note-block rest-block";
+
+    block.dataset.type =
+        "rest";
+
+    block.dataset.startStep =
+        restData.startStep;
+
+    block.dataset.durationBeats =
+        restData.durationBeats;
+
+    block.noteData =
+        restData;
+
+    const symbol =
+        document.createElement("span");
+
+    symbol.className =
+        "rest-symbol";
+
+    symbol.textContent =
+        getRestSymbol(
+            restData.durationBeats
+        );
+
+    block.appendChild(symbol);
+
+    const resizeHandle =
+        document.createElement("div");
+
+    resizeHandle.className =
+        "rest-resize-handle";
+
+    block.appendChild(
+        resizeHandle
+    );
+
+    cell.appendChild(block);
+
+    updateRestBlockWidth(
+        block,
+        restData
+    );
+
+    block.addEventListener(
+        "click",
+        event => {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            saveUndoState();
+
+            const index =
+                composition.indexOf(
+                    restData
+                );
+
+            if (index === -1) {
+                return;
+            }
+
+            composition.splice(
+                index,
+                1
+            );
+
+            selectedNotes =
+                selectedNotes.filter(
+                    note =>
+                        note !== restData
+                );
+
+            renderComposition();
+
+            statusText.textContent =
+                "쉼표가 삭제되었습니다.";
+
+        }
+    );
+
+    setupRestDrag(
+        block,
+        restData
+    );
+
+    setupRestResize(
+        block,
+        restData,
+        resizeHandle
+    );
+
+    return block;
+
+}
+
+function setupRestResize(
+    block,
+    restData,
+    handle
+) {
+
+    let isResizing = false;
+
+    let startX = 0;
+
+    let originalDuration = 0;
+
+    handle.addEventListener(
+        "pointerdown",
+        event => {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            isResizing = true;
+
+            startX =
+                event.clientX;
+
+            originalDuration =
+                restData.durationBeats;
+
+            saveUndoState();
+
+            handle.setPointerCapture(
+                event.pointerId
+            );
+
+        }
+    );
+
+    handle.addEventListener(
+        "pointermove",
+        event => {
+
+            if (!isResizing) {
+                return;
+            }
+
+            const deltaX =
+                event.clientX -
+                startX;
+
+            const deltaBeats =
+                deltaX / 120;
+
+            let newDuration =
+                originalDuration +
+                deltaBeats;
+
+            newDuration =
+                Math.round(
+                    newDuration * 4
+                ) / 4;
+
+            newDuration =
+                Math.max(
+                    0.25,
+                    newDuration
+                );
+
+            newDuration =
+                Math.min(
+                    4,
+                    newDuration
+                );
+
+            const maxDuration =
+                totalSteps -
+                restData.startStep;
+
+            newDuration =
+                Math.min(
+                    newDuration,
+                    maxDuration
+                );
+
+            restData.durationBeats =
+                newDuration;
+
+            block.dataset.durationBeats =
+                newDuration;
+
+            updateRestBlockWidth(
+                block,
+                restData
+            );
+
+            const symbol =
+                block.querySelector(
+                    ".rest-symbol"
+                );
+
+            if (symbol) {
+
+                symbol.textContent =
+                    getRestSymbol(
+                        restData.durationBeats
+                    );
+
+            }
+
+        }
+    );
+
+    handle.addEventListener(
+        "pointerup",
+        event => {
+
+            if (!isResizing) {
+                return;
+            }
+
+            isResizing = false;
+
+            handle.releasePointerCapture(
+                event.pointerId
+            );
+
+            renderComposition();
+
+            statusText.textContent =
+                `${restData.durationBeats}박 쉼표로 변경되었습니다.`;
+
+        }
+    );
+
+}
+
+function setupRestDrag(
+    block,
+    restData
+) {
+
+    let isDragging = false;
+
+    let hasMoved = false;
+
+    let startX = 0;
+
+    let originalStep = 0;
+
+    block.addEventListener(
+        "pointerdown",
+        event => {
+
+            event.preventDefault();
+            event.stopPropagation();
+
+            isDragging = true;
+
+            hasMoved = false;
+
+            startX =
+                event.clientX;
+
+            originalStep =
+                restData.startStep;
+
+            block.setPointerCapture(
+                event.pointerId
+            );
+
+        }
+    );
+
+    block.addEventListener(
+        "pointermove",
+        event => {
+
+            if (!isDragging) {
+                return;
+            }
+
+            if (
+                Math.abs(
+                    event.clientX -
+                    startX
+                ) < 5
+            ) {
+                return;
+            }
+
+            hasMoved = true;
+
+            const deltaX =
+                event.clientX -
+                startX;
+
+            const deltaStep =
+                Math.round(
+                    deltaX / 120
+                );
+
+            let newStep =
+                originalStep +
+                deltaStep;
+
+            newStep =
+                Math.max(
+                    0,
+                    newStep
+                );
+
+            newStep =
+                Math.min(
+                    newStep,
+                    totalSteps -
+                    restData.durationBeats
+                );
+
+            restData.startStep =
+                newStep;
+
+            restData.step =
+                newStep;
+
+            block.dataset.startStep =
+                newStep;
+
+            block.dataset.step =
+                newStep;
+
+            block.style.left =
+                "0px";
+
+        }
+    );
+
+    block.addEventListener(
+        "pointerup",
+        event => {
+
+            if (!isDragging) {
+                return;
+            }
+
+            isDragging = false;
+
+            block.releasePointerCapture(
+                event.pointerId
+            );
+
+            if (!hasMoved) {
+                return;
+            }
+
+            renderComposition();
+
+            statusText.textContent =
+                "쉼표가 이동되었습니다.";
+
+        }
+    );
+
+}
+
+function updateRestBlockWidth(
+    block,
+    restData
+) {
+
+    const width =
+        restData.durationBeats * 120;
+
+    block.style.width =
+        `${width}px`;
+
+}
+
 function createNoteBlock(
     noteData,
     cell
@@ -2251,6 +2868,12 @@ function renderComposition() {
 
     composerNoteBlockMap.clear();
 
+    document
+        .querySelectorAll(".rest-block")
+        .forEach(block => {
+            block.remove();
+        });
+
     activeComposerCells.forEach(
         cell => {
 
@@ -2281,6 +2904,19 @@ function renderComposition() {
         activeComposerCells.add(
             cell
         );
+
+        if (
+            noteData.type === "rest"
+        ) {
+
+            createRestBlock(
+                noteData,
+                cell
+            );
+
+            return;
+
+        }
 
         const block =
             document.createElement("div");
@@ -3897,6 +4533,108 @@ function findClosestNote(
 
 }
 
+function getRestSymbol(
+    durationBeats
+) {
+
+    if (durationBeats === 0.25) {
+        return "𝄿";
+    }
+
+    if (durationBeats === 0.5) {
+        return "𝄾";
+    }
+
+    if (durationBeats === 0.75) {
+        return "𝄾·";
+    }
+
+    if (durationBeats === 1) {
+        return "𝄽";
+    }
+
+    if (durationBeats === 2) {
+        return "𝄼";
+    }
+
+    if (durationBeats === 3) {
+        return "𝄼·";
+    }
+
+    if (durationBeats === 4) {
+        return "𝄻";
+    }
+
+    return "?";
+
+}
+
+function getNoteDurationSymbol(
+    duration
+) {
+
+    switch (duration) {
+
+        case 0.25:
+            return "𝅘𝅥𝅯";
+
+        case 0.5:
+            return "♪";
+
+        case 0.75:
+            return "♪.";
+
+        case 1:
+            return "♩";
+
+        case 2:
+            return "𝅗𝅥";
+
+        case 3:
+            return "𝅗𝅥.";
+
+        case 4:
+            return "𝅝";
+
+        default:
+            return "?"
+
+    }
+
+}
+
+function updateDurationButtonSymbols() {
+
+    durationButtons.forEach(
+        button => {
+
+            const duration =
+                Number(
+                    button.dataset.duration
+                );
+
+            if (restMode) {
+
+                button.textContent =
+                    getRestSymbol(
+                        duration
+                    );
+
+            }
+            else {
+
+                button.textContent =
+                    getNoteDurationSymbol(
+                        duration
+                    );
+
+            }
+
+        }
+    );
+
+}
+
 pianoRoll.addEventListener(
     "scroll",
     () => {
@@ -3948,6 +4686,8 @@ createLabels();
 createBeatLabels();
 
 createGrid();
+
+updateDurationButtonSymbols();
 
 createOctaveSeparators();
 
