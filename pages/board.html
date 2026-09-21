@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title> 게시판 | 루이의 음악실 </title>
+
+    <link rel="stylesheet" href="../css/style.css">
+    <link rel="stylesheet" href="../css/board.css">
+</head>
+
+<body>
+
+    <header class="site-header">
+
+        <div class="logo">
+
+            <span class="logo-icon"> 🎹 </span>
+
+            <div>
+                <h1> 루이의 음악실 </h1>
+                <p> Louis Kariel Music Blog </p>
+            </div>
+
+        </div>
+
+        <nav class="main-nav">
+
+            <a href="../index.html">
+                홈
+            </a>
+
+            <a href="piano.html">
+                피아노
+            </a>
+
+            <a href="composer.html">
+                작곡실
+            </a>
+
+            <a href="board.html" class="active">
+                게시판
+            </a>
+
+            <a href="profile.html">
+                프로필
+            </a>
+
+        </nav>
+
+        <button class="login-button" id="loginButton">
+            로그인
+        </button>
+
+    </header>
+
+    <main class="board-page">
+
+        <section class="board-header">
+
+            <p> MUSIC BOARD </p>
+
+            <h2>
+                📝 음악 게시판
+            </h2>
+
+            <span>
+                음악에 대한 이야기와 생각을 함께 나눠보세요.
+            </span>
+
+        </section>
+
+        <section class="board-list">
+
+            <article class="board-item" data-target="post.html?id=1">
+                <div class="board-number"> 01 </div>
+                <div class="board-content">
+                    <span> 음악 이야기 </span>
+                    <h3> 루이의 음악실에 오신 것을 환영합니다. </h3>
+                    <p> 앞으로 만들어갈 음악실의 이야기를 소개합니다. </p>
+                </div>
+                <div class="board-arrow"> → </div>
+            </article>
+
+            <article class="board-item" data-target="post.html?id=2">
+                <div class="board-number"> 02 </div>
+                <div class="board-content">
+                    <span> 피아노 </span>
+                    <h3> 피아노와 함께하는 새로운 시작 </h3>
+                    <p> 피아노를 좋아하는 사람들을 위한 이야기입니다. </p>
+                </div>
+                <div class="board-arrow"> → </div>
+            </article>
+
+            <article class="board-item" data-target="post.html?id=3">
+                <div class="board-number"> 03 </div>
+                <div class="board-content">
+                    <span> 작곡 </span>
+                    <h3> 나만의 음악을 만들어보자 </h3>
+                    <p> 앞으로 구현될 가상 작곡 시스템을 소개합니다. </p>
+                </div>
+                <div class="board-arrow"> → </div>
+            </article>
+
+        </section>
+
+    </main>
+
+    <footer class="site-footer">
+
+        <div class="footer-logo">
+            🎹 루이의 음악실
+        </div>
+
+        <p>
+            Louis Kariel Music Blog Project
+        </p>
+
+        <p class="copyright">
+            © 2026 Louis Kariel. All rights reserved.
+        </p>
+
+    </footer>
+
+    <script src="../js/board.js"></script>
+
+</body>
+
+</html>

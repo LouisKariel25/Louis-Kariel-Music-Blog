@@ -114,6 +114,14 @@ function releaseKeyboardNote(key) {
 
 }
 
+// Drop every remembered key press so a subsequent "stop all" leaves a
+// clean slate (e.g. after the user releases keys while focus was away).
+function resetKeyboardInput() {
+
+    pressedKeyboardKeys.clear();
+
+}
+
 document.addEventListener(
     "keydown",
     event => {

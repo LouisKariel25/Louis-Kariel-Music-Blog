@@ -70,6 +70,32 @@
     outline: none;
 }
 
+.time-signature-control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.time-signature-control label {
+    font-size: 13px;
+    color: #777;
+}
+
+.time-signature-control select {
+    min-width: 80px;
+    padding: 10px 12px;
+    border: 1px solid #d5cec2;
+    border-radius: 8px;
+    background: white;
+    color: #555;
+    outline: none;
+    cursor: pointer;
+}
+
+.time-signature-control select:focus {
+    border-color: #8b7355;
+}
+
 .composer-controls {
     display: flex;
     justify-content: center;
@@ -246,21 +272,15 @@
     min-height: 32px;
 }
 
-.composer-cell[data-step="0"],
-.composer-cell[data-step="4"],
-.composer-cell[data-step="8"],
-.composer-cell[data-step="12"] {
-    border-left: 1px solid #8b7355;
+.composer-cell.measure-start {
+    border-left: 2px solid #8b7355;
 }
 
 .composer-cell:hover {
     background: #ebe6dd;
 }
 
-.composer-cell[data-step="3"],
-.composer-cell[data-step="7"],
-.composer-cell[data-step="11"],
-.composer-cell[data-step="15"] {
+.composer-cell.measure-end {
     border-right: 2px solid #8b7355;
 }
 

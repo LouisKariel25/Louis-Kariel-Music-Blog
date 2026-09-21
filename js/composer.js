@@ -4,6 +4,10 @@ let masterGain = null;
 
 let bpm = 120;
 
+let beatsPerMeasure = 4;
+
+let beatUnit = 4;
+
 const STEPS = 16;
 
 let totalSteps = STEPS;
@@ -61,6 +65,11 @@ const songTitle =
 const bpmInput =
     document.getElementById(
         "bpm"
+    );
+
+const timeSignatureInput =
+    document.getElementById(
+        "timeSignature"
     );
 
 const playButton =
@@ -545,50 +554,36 @@ function initializeAudio() {
 
 }
 
+// Reuse the canonical piano-key table (which already stores midi and
+// frequency) instead of re-deriving the pitch from the note name.
 function getFrequency(noteName) {
 
-    const match =
-        noteName.match(
-            /^([A-G]#?)(\d)$/
+    const pianoKey =
+        pianoKeys.find(
+            key => key.name === noteName
         );
 
-    if (!match) {
-        return 440;
+    if (!pianoKey) {
+
+        console.error(
+            "❌ Unknown note name : ",
+            noteName
+        );
+
+        return null;
+
     }
 
-    const noteNameOnly =
-        match[1];
+    if (
+        typeof pianoKey.frequency === "number"
+    ) {
 
-    const octave =
-        Number(match[2]);
+        return pianoKey.frequency;
 
-    const noteValues = {
+    }
 
-        "C": 0,
-        "C#": 1,
-        "D": 2,
-        "D#": 3,
-        "E": 4,
-        "F": 5,
-        "F#": 6,
-        "G": 7,
-        "G#": 8,
-        "A": 9,
-        "A#": 10,
-        "B": 11
-
-    };
-
-    const midi =
-        (octave + 1) * 12 +
-        noteValues[noteNameOnly];
-
-    return (
-        440 *
-        Math.pow(
-            2,
-            (midi - 69) / 12
-        )
+    return midiToFrequency(
+        pianoKey.midi
     );
 
 }
@@ -600,6 +595,13 @@ function playNote(
 
     initializeAudio();
 
+    const frequency =
+        getFrequency(noteName);
+
+    if (frequency === null) {
+        return;
+    }
+
     const oscillator =
         audioContext.createOscillator();
 
@@ -610,7 +612,7 @@ function playNote(
         "triangle";
 
     oscillator.frequency.value =
-        getFrequency(noteName);
+        frequency;
 
     gain.gain.setValueAtTime(
         0,
@@ -643,6 +645,100 @@ function playNote(
 
 }
 
+function createGridCell(row, step) {
+
+    const cell =
+        document.createElement(
+            "div"
+        );
+
+    cell.classList.add(
+        "composer-cell"
+    );
+
+    const note =
+        noteList[row];
+
+    cell.dataset.note =
+        note;
+
+    cell.dataset.step =
+        step;
+
+    composerCellMap.set(
+        `${note}|${step}`,
+        cell
+    );
+
+    cell.style.gridColumn =
+        `${step + 1}`;
+
+    cell.style.gridRow =
+        `${row + 1}`;
+
+    if (
+        note.includes("#")
+    ) {
+
+        cell.classList.add(
+            "black-row"
+        );
+
+    }
+
+    const measureLength =
+        getMeasureLength();
+
+    if (
+        step % measureLength === 0
+    ) {
+
+        cell.classList.add(
+            "measure-start"
+        );
+
+    }
+
+    if (
+        step % measureLength ===
+        measureLength - 1
+    ) {
+
+        cell.classList.add(
+            "measure-end"
+        );
+
+    }
+
+    cell.addEventListener(
+        "click",
+        () => {
+
+            if (wasResizing) {
+                wasResizing = false;
+                return;
+            }
+
+            if (wasDragging) {
+                wasDragging = false;
+                return;
+            }
+
+            toggleNote(
+                cell
+            );
+
+        }
+    );
+
+    pianoRoll.appendChild(
+        cell
+    );
+
+    return cell;
+
+}
+
 function createGrid() {
 
     pianoRoll.innerHTML = "";
@@ -666,68 +762,9 @@ function createGrid() {
             step++
         ) {
 
-            const cell =
-                document.createElement(
-                    "div"
-                );
-
-            cell.classList.add(
-                "composer-cell"
-            );
-
-            const note =
-                noteList[row];
-
-            cell.dataset.note =
-                note;
-
-            cell.dataset.step =
-                step;
-
-            composerCellMap.set(
-                `${note}|${step}`,
-                cell
-            );
-
-            cell.style.gridColumn =
-                `${step + 1}`;
-
-            cell.style.gridRow =
-                `${row + 1}`;
-
-            if (
-                note.includes("#")
-            ) {
-
-                cell.classList.add(
-                    "black-row"
-                );
-
-            }
-
-            cell.addEventListener(
-                "click",
-                () => {
-
-                    if (wasResizing) {
-                        wasResizing = false;
-                        return;
-                    }
-
-                    if (wasDragging) {
-                        wasDragging = false;
-                        return;
-                    }
-
-                    toggleNote(
-                        cell
-                    );
-
-                }
-            );
-
-            pianoRoll.appendChild(
-                cell
+            createGridCell(
+                row,
+                step
             );
 
         }
@@ -776,74 +813,9 @@ function expandComposerGrid() {
             step++
         ) {
 
-            const cell =
-                document.createElement(
-                    "div"
-                );
-
-            cell.classList.add(
-                "composer-cell"
-            );
-
-            const note =
-                noteList[row];
-
-            cell.dataset.note =
-                note;
-
-            cell.dataset.step =
-                step;
-
-            composerCellMap.set(
-                `${note}|${step}`,
-                cell
-            );
-
-            cell.style.gridColumn =
-                `${step + 1}`;
-
-            cell.style.gridRow =
-                `${row + 1}`;
-
-            if (
-                note.includes("#")
-            ) {
-
-                cell.classList.add(
-                    "black-row"
-                );
-
-            }
-
-            cell.addEventListener(
-                "click",
-                () => {
-
-                    if (wasResizing) {
-
-                        wasResizing = false;
-
-                        return;
-
-                    }
-
-                    if (wasDragging) {
-
-                        wasDragging = false;
-
-                        return;
-
-                    }
-
-                    toggleNote(
-                        cell
-                    );
-
-                }
-            );
-
-            pianoRoll.appendChild(
-                cell
+            createGridCell(
+                row,
+                step
             );
 
         }
@@ -960,14 +932,27 @@ function createOctaveSeparators() {
     });
 }
 
+function getMeasureLength() {
+
+    return beatsPerMeasure;
+
+}
+
 function createBeatLabels() {
 
     beatLabels.innerHTML = "";
 
+    const measureLength =
+        getMeasureLength();
+
     const totalMeasures =
         Math.ceil(
-            totalSteps / 4
+            totalSteps /
+            measureLength
         );
+
+    const measureWidth =
+        measureLength * 120;
 
     beatLabels.style.width =
         `${totalSteps * 120}px`;
@@ -976,7 +961,7 @@ function createBeatLabels() {
         "grid";
 
     beatLabels.style.gridTemplateColumns =
-        `repeat(${totalMeasures}, 480px)`;
+        `repeat(${totalMeasures}, ${measureWidth}px)`;
 
     for (
         let measure = 1;
@@ -985,14 +970,17 @@ function createBeatLabels() {
     ) {
 
         const label =
-            document.createElement("div");
+            document.createElement(
+                "div"
+            );
 
         label.classList.add(
-            "beat-label"
+            "beat-label",
+            "measure-start"
         );
 
         label.textContent =
-            measure;
+            `${measure}마디`;
 
         beatLabels.appendChild(
             label
@@ -1027,96 +1015,53 @@ function syncPianoLabelsHeight() {
 
 }
 
-function toggleNote(cell) {
+// Insert a rest at the clicked cell.
+function insertRest(cell, note, step) {
 
-    const note =
-        cell.dataset.note;
-
-    const step =
-        Number(
-            cell.dataset.step
+    const restData =
+        createRestData(
+            step,
+            selectedDuration
         );
 
-    if (selectedDuration === null) {
-        statusText.textContent =
-            "입력할 음표나 쉼표를 먼저 선택해주세요.";
-        return;
-    }
+    saveUndoState();
 
-    if (restMode) {
+    composition.push({
+        ...restData,
 
-        const restData =
-            createRestData(
-                step,
-                selectedDuration
-            );
+        note:
+            note,
 
-        saveUndoState();
+        step:
+            step,
 
-        composition.push({
-            ...restData,
+        offsetBeats:
+            0
+    });
 
-            note:
-                note,
+    renderComposition();
 
-            step:
-                step,
+    statusText.textContent =
+        `${selectedDuration}박 쉼표가 입력되었습니다.`;
 
-            offsetBeats:
-                0
-        });
+}
 
-        renderComposition();
+// Insert a note at the clicked cell in triplet (1/3 beat) mode.
+function insertTripletNote(cell, note, step) {
 
-        statusText.textContent =
-            `${selectedDuration}박 쉼표가 입력되었습니다.`;
+    const actualDuration =
+        1 / 3;
 
-        return;
-
-    }
-
-    let actualDuration;
-    let offset;
-
-    if (tripletMode) {
-
-        actualDuration =
-            1 / 3;
-
-        offset =
-            getNextTripletOffset(
-                note,
-                step
-            );
-
-    }
-
-    else {
-
-        const maxDuration =
-            getMaxDurationForStep(step);
-
-        actualDuration =
-            Math.min(
-                selectedDuration,
-                maxDuration
-            );
-
-        offset =
-            getNextAvailableOffset(
-                note,
-                step,
-                actualDuration
-            );
-
-    }
+    const offset =
+        getNextTripletOffset(
+            note,
+            step
+        );
 
     if (offset === null) {
 
         statusText.textContent =
-            tripletMode
-                ? "이 박에는 셋잇단음표를 더 넣을 공간이 없습니다."
-                : "이 박에 더이상 음표를 넣을 공간이 없습니다.";
+            "이 박에는 셋잇단음표를 더 넣을 공간이 없습니다.";
 
         return;
 
@@ -1139,22 +1084,131 @@ function toggleNote(cell) {
             actualDuration,
 
         isTriplet:
-            tripletMode
-
+            true
     });
 
     selectedNote.textContent =
         note;
 
     statusText.textContent =
-        tripletMode
-            ? `셋잇단음표 입력 : ${offset === 0 ? "1번째" : offset < 0.5 ? "2번째" : "3번째"}`
-            : `${actualDuration}박 음표가 입력되었습니다.`;
+        `셋잇단음표 입력 : ${offset === 0 ? "1번째" : offset < 0.5 ? "2번째" : "3번째"}`;
 
     renderSingleNote(
         composition[
         composition.length - 1
         ]
+    );
+
+}
+
+// Insert an ordinary note at the clicked cell.
+function insertNote(cell, note, step) {
+
+    const maxDuration =
+        getMaxDurationForStep(step);
+
+    const actualDuration =
+        Math.min(
+            selectedDuration,
+            maxDuration
+        );
+
+    const offset =
+        getNextAvailableOffset(
+            note,
+            step,
+            actualDuration
+        );
+
+    if (offset === null) {
+
+        statusText.textContent =
+            "이 박에 더이상 음표를 넣을 공간이 없습니다.";
+
+        return;
+
+    }
+
+    saveUndoState();
+
+    composition.push({
+
+        note:
+            note,
+
+        step:
+            step,
+
+        offsetBeats:
+            offset,
+
+        durationBeats:
+            actualDuration,
+
+        isTriplet:
+            false
+    });
+
+    selectedNote.textContent =
+        note;
+
+    statusText.textContent =
+        `${actualDuration}박 음표가 입력되었습니다.`;
+
+    renderSingleNote(
+        composition[
+        composition.length - 1
+        ]
+    );
+
+}
+
+// Short dispatcher: validates the selection, then delegates to the
+// rest / triplet / ordinary-note insertion helpers above.
+function toggleNote(cell) {
+
+    const note =
+        cell.dataset.note;
+
+    const step =
+        Number(
+            cell.dataset.step
+        );
+
+    if (selectedDuration === null) {
+        statusText.textContent =
+            "입력할 음표나 쉼표를 먼저 선택해주세요.";
+        return;
+    }
+
+    if (restMode) {
+
+        insertRest(
+            cell,
+            note,
+            step
+        );
+
+        return;
+
+    }
+
+    if (tripletMode) {
+
+        insertTripletNote(
+            cell,
+            note,
+            step
+        );
+
+        return;
+
+    }
+
+    insertNote(
+        cell,
+        note,
+        step
     );
 
 }
@@ -1744,6 +1798,46 @@ bpmInput.addEventListener(
 
         bpmInput.value =
             bpm;
+
+    }
+);
+
+timeSignatureInput.addEventListener(
+    "change",
+    () => {
+
+        const value =
+            timeSignatureInput.value;
+
+        if (value !== "4/4") {
+
+            statusText.textContent =
+                "현재는 4/4박자 시스템만 사용할 수 있습니다.";
+
+            timeSignatureInput.value =
+                "4/4";
+
+            return;
+
+        }
+
+        beatPerMeasure = 4;
+        beatUnit = 4;
+
+        createBeatLabels();
+
+        createGrid();
+
+        createOctaveSeparators();
+
+        syncBeatLabelsWidth();
+
+        syncPianoLabelsHeight();
+
+        renderComposition();
+
+        statusText.textContent =
+            "4/4박자로 설정되었습니다.";
 
     }
 );
@@ -4659,7 +4753,6 @@ pianoRoll.addEventListener(
     }
 );
 
-/*
 pianoRoll.addEventListener(
     "scroll",
     () => {
@@ -4679,7 +4772,6 @@ pianoRoll.addEventListener(
 
     }
 );
-*/
 
 createLabels();
 

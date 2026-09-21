@@ -10,6 +10,8 @@ let octave = 4;
 
 let recordingTimer = null;
 
+let playbackTimers = [];
+
 let recordedNotes = [];
 
 let recordingNotes = new Map();
@@ -26,24 +28,8 @@ let beatsPerMeasure = 4;
 
 let beatUnit = 4;
 
-const keyboardMap = {
-
-    "a": 0,
-    "w": 1,
-    "s": 2,
-    "e": 3,
-    "d": 4,
-    "f": 5,
-    "t": 6,
-    "g": 7,
-    "y": 8,
-    "h": 9,
-    "u": 10,
-    "j": 11
-
-};
-
-const pressedKeyboardNotes = new Map();
+// Keyboard-to-note mapping and octave handling live in pianoInput.js,
+// which is the single keyboard-input module for the piano page.
 
 const activeNotes = new Map();
 
@@ -643,173 +629,10 @@ function stopNote(keyElement) {
     }
 }
 
-document.addEventListener("keydown", (event) => {
-
-    if (event.repeat) {
-        return;
-    }
-
-    const pressedKey =
-        event.key.toLowerCase();
-
-    if (event.key === "[") {
-
-        event.preventDefault();
-
-        if (octave > 1) {
-
-            octave--;
-
-            if (octaveDisplay) {
-
-                octaveDisplay.textContent =
-                    octave;
-
-            }
-
-            console.log(
-                "🎹 Octave Down : ",
-                octave
-            );
-
-        }
-
-        return;
-
-    }
-
-    if (event.key === "]") {
-
-        event.preventDefault();
-
-        if (octave < 7) {
-
-            octave++;
-
-            if (octaveDisplay) {
-
-                octaveDisplay.textContent =
-                    octave;
-
-            }
-
-            console.log(
-                "🎹 Octave Up : ",
-                octave
-            );
-
-        }
-
-        return;
-
-    }
-
-    const semitone =
-        keyboardMap[pressedKey];
-
-    if (
-        semitone === undefined
-    ) {
-
-        return;
-
-    }
-
-    event.preventDefault();
-
-    const midi =
-        12 *
-        (octave + 1) +
-        semitone;
-
-    if (
-        midi < PIANO_START_MIDI ||
-        midi > PIANO_END_MIDI
-    ) {
-
-        return;
-
-    }
-
-    if (
-        pressedKeyboardNotes.has(
-            pressedKey
-        )
-    ) {
-        return;
-    }
-
-    const keyElement =
-        document.querySelector(
-            `.piano .key[data-midi="${midi}"]`
-        );
-
-    if (!keyElement) {
-
-        console.warn(
-            "❌ Piano key not found : ",
-            midi
-        );
-
-        return;
-
-    }
-
-    pressedKeyboardNotes.set(
-        pressedKey,
-        {
-            midi: midi,
-            keyElement: keyElement
-        }
-    );
-
-    playMidiNote(
-        midi,
-        keyElement
-    );
-
-    console.log(
-        "🎹 KEY DOWN : ",
-        pressedKey,
-        "| MIDI : ",
-        midi
-    );
-
-});
-
-document.addEventListener(
-    "keyup",
-    event => {
-
-        const pressedKey =
-            event.key.toLowerCase();
-
-        const pressedNote =
-            pressedKeyboardNotes.get(
-                pressedKey
-            );
-
-        if (!pressedNote) {
-            return;
-        }
-
-        stopNote(
-            pressedNote.keyElement
-        );
-
-        pressedKeyboardNotes.delete(
-            pressedKey
-        );
-
-        console.log(
-            "🎹 KEY UP : ",
-            pressedKey,
-            "| MIDI : ",
-            pressedNote.midi
-        );
-
-    }
-);
+// Computer-keyboard note input (a,w,s,e,d,f,t,g,y,h,u,j and [ ] octave
+// shifting) is handled exclusively by pianoInput.js, which triggers the
+// on-screen piano buttons. Keeping a second set of document-level key
+// listeners here caused every keystroke to be processed twice.
 
 if (volumeControl) {
 
@@ -897,16 +720,35 @@ if (stopAll) {
                 }
             );
 
-            pressedKeyboardNotes.clear();
+            if (
+                typeof resetKeyboardInput ===
+                "function"
+            ) {
+
+                resetKeyboardInput();
+
+            }
 
         }
     );
 
 }
 
+function clearPlaybackTimers() {
+
+    playbackTimers.forEach(
+        timerId => clearTimeout(timerId)
+    );
+
+    playbackTimers = [];
+
+}
+
 function startRecording() {
 
     initializeAudio();
+
+    clearPlaybackTimers();
 
     recordedNotes = [];
 
@@ -974,6 +816,8 @@ function stopRecording() {
     clearInterval(
         recordingTimer
     );
+
+    clearPlaybackTimers();
 
     recordButton.textContent =
         "🔴 녹음";
@@ -1111,18 +955,25 @@ function playRecording() {
 
     }
 
+    clearPlaybackTimers();
+
     recordedNotes.forEach(
         recordedNote => {
 
-            setTimeout(
-                () => {
+            const timerId =
+                setTimeout(
+                    () => {
 
-                    playPlaybackNote(
-                        recordedNote
-                    );
+                        playPlaybackNote(
+                            recordedNote
+                        );
 
-                },
-                recordedNote.start
+                    },
+                    recordedNote.start
+                );
+
+            playbackTimers.push(
+                timerId
             );
 
         }
@@ -1141,25 +992,32 @@ function playRecording() {
         ) +
         200;
 
-    setTimeout(
-        () => {
+    const completionTimer =
+        setTimeout(
+            () => {
 
-            if (recordStatus) {
+                if (recordStatus) {
 
-                recordStatus.textContent =
-                    "재생 완료";
+                    recordStatus.textContent =
+                        "재생 완료";
 
-            }
+                }
 
-            if (playButton) {
+                if (playButton) {
 
-                playButton.disabled =
-                    false;
+                    playButton.disabled =
+                        false;
 
-            }
+                }
 
-        },
-        duration
+                playbackTimers = [];
+
+            },
+            duration
+        );
+
+    playbackTimers.push(
+        completionTimer
     );
 
 }
@@ -1284,6 +1142,8 @@ if (clearButton) {
     clearButton.addEventListener(
         "click",
         () => {
+
+            clearPlaybackTimers();
 
             recordedNotes = [];
 

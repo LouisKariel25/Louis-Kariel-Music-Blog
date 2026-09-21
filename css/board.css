@@ -1,0 +1,85 @@
+.board-page {
+    max-width: 1000px;
+    margin: auto;
+    padding: 80px 30px;
+}
+
+.board-header {
+    margin-bottom: 45px;
+}
+
+.board-header p {
+    font-size: 11px;
+    letter-spacing: 3px;
+    color: #8b7355;
+}
+
+.board-header h2 {
+    font-size: 38px;
+    margin-top: 8px;
+}
+
+.board-header span {
+    color: #777;
+    font-size: 14px;
+}
+
+.board-list {
+    border-top: 1px solid #ccc;
+}
+
+.board-item {
+    display: flex;
+    align-items: center;
+    gap: 30px;
+    padding: 25px 10px;
+    border-bottom: 1px solid #ccc;
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.board-item:hover {
+    padding-left: 20px;
+    background: #efe9dd;
+}
+
+.board-number {
+    font-size: 13px;
+    color: #999;
+    width: 30px;
+}
+
+.board-content {
+    flex: 1;
+}
+
+.board-content span {
+    font-size: 11px;
+    color: #8b7355;
+}
+
+.board-content h3 {
+    font-size: 18px;
+    margin: 3px 0;
+}
+
+.board-content p {
+    font-size: 13px;
+    color: #777;
+}
+
+.board-arrow {
+    font-size: 24px;
+}
+
+@media (max-width: 600px) {
+
+    .board-page {
+        padding: 60px 20px;
+    }
+
+    .board-header h2 {
+        font-size: 30px;
+    }
+
+}
