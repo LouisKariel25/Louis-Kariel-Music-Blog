@@ -37,7 +37,8 @@
 }
 
 .song-title,
-.tempo-control {
+.tempo-control,
+.song-library {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -58,6 +59,21 @@
 }
 
 .song-title input:focus {
+    border-color: #8b7355;
+}
+
+.song-library select {
+    min-width: 180px;
+    padding: 10px 12px;
+    border: 1px solid #d5cec2;
+    border-radius: 8px;
+    background: white;
+    color: #555;
+    outline: none;
+    cursor: pointer;
+}
+
+.song-library select:focus {
     border-color: #8b7355;
 }
 

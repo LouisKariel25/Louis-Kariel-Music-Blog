@@ -72,3 +72,21 @@ function createPianoKeys() {
 const pianoKeys = createPianoKeys();
 
 console.log("88-Key Piano Loaded : ", pianoKeys);
+
+// 브라우저에서는 module이 없으므로 무시되고, Node 테스트에서는
+// 순수 함수들을 불러올 수 있도록 내보낸다.
+if (typeof module !== "undefined" && module.exports) {
+
+    module.exports = {
+        PIANO_START_MIDI,
+        PIANO_END_MIDI,
+        NOTE_NAMES,
+        BLACK_KEYS,
+        midiToNote,
+        midiToFrequency,
+        isBlackKey,
+        createPianoKeys,
+        pianoKeys
+    };
+
+}

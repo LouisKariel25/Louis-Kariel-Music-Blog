@@ -1,0 +1,16 @@
+{
+    "name": "louis-kariel-music-blog",
+    "version": "1.0.0",
+    "description": "루이의 음악실 — 가상 피아노, 작곡실, 음악 게시판",
+    "private": true,
+    "scripts": {
+        "test": "node --test tests/pianoKeys.test.js",
+        "serve": "node dev-server.js"
+    },
+    "keywords": [
+        "music",
+        "piano",
+        "blog"
+    ],
+    "license": "UNLICENSED"
+}

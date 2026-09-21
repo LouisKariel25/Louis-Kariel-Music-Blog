@@ -54,3 +54,28 @@ postItems.forEach(function (item) {
         window.location.href = item.dataset.target;
     });
 });
+
+// 현재 페이지에 맞춰 내비게이션의 활성 링크를 자동으로 표시합니다.
+// 각 HTML에 active 클래스를 하드코딩하지 않아도 됩니다.
+(function highlightActiveNav() {
+
+    const currentFile =
+        window.location.pathname.split("/").pop() || "index.html";
+
+    const navLinks =
+        document.querySelectorAll(".main-nav a");
+
+    navLinks.forEach(function (link) {
+
+        link.classList.remove("active");
+
+        const linkFile =
+            link.getAttribute("href").split("/").pop().split("?")[0];
+
+        if (linkFile === currentFile) {
+            link.classList.add("active");
+        }
+
+    });
+
+})();

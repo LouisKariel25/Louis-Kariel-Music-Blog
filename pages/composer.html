@@ -99,6 +99,20 @@
 
             </div>
 
+            <div class="song-library">
+
+                <label for="songList">
+                    저장한 곡
+                </label>
+
+                <select id="songList">
+                    <option value="">
+                        불러올 곡 선택
+                    </option>
+                </select>
+
+            </div>
+
             <div class="tempo-control">
 
                 <label for="bpm">
@@ -160,6 +174,16 @@
             <button id="saveButton" class="composer-button">
                 💾 저장
             </button>
+
+            <button id="exportButton" class="composer-button">
+                ⬇ JSON 내보내기
+            </button>
+
+            <button id="importFileButton" class="composer-button">
+                ⬆ JSON 가져오기
+            </button>
+
+            <input type="file" id="importFileInput" accept=".json,application/json" hidden>
 
             <button id="importButton" class="composer-button">
                 🎹 피아노 가져오기

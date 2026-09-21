@@ -97,6 +97,26 @@ const importButton =
         "importButton"
     );
 
+const songList =
+    document.getElementById(
+        "songList"
+    );
+
+const exportButton =
+    document.getElementById(
+        "exportButton"
+    );
+
+const importFileButton =
+    document.getElementById(
+        "importFileButton"
+    );
+
+const importFileInput =
+    document.getElementById(
+        "importFileInput"
+    );
+
 const statusText =
     document.getElementById(
         "statusText"
@@ -2040,85 +2060,280 @@ function stopPlayback() {
 
 }
 
-saveButton.addEventListener(
-    "click",
-    () => {
+const SONGS_STORAGE_KEY =
+    "louisKarielSongs";
 
-        const data = {
-
-            title:
-                songTitle.value,
-
-            bpm:
-                bpm,
-
-            notes:
-                composition,
-
-            saveAt:
-                new Date().toISOString()
-
-        };
-
-        localStorage.setItem(
-            "louisKarielComposition",
-            JSON.stringify(data)
-        );
-
-        statusText.textContent =
-            "💾 곡이 저장되었습니다.";
-
-    }
-);
-
-function loadComposition() {
+// 저장된 모든 곡을 배열로 읽어옵니다.
+function readSavedSongs() {
 
     const saved =
+        localStorage.getItem(
+            SONGS_STORAGE_KEY
+        );
+
+    if (!saved) {
+        return [];
+    }
+
+    try {
+
+        const songs =
+            JSON.parse(saved);
+
+        return Array.isArray(songs)
+            ? songs
+            : [];
+
+    }
+
+    catch (error) {
+
+        console.error(
+            "저장된 곡 목록 읽기 실패 : ",
+            error
+        );
+
+        return [];
+
+    }
+
+}
+
+// 곡 목록을 localStorage에 기록하고 드롭다운을 갱신합니다.
+function writeSavedSongs(songs) {
+
+    localStorage.setItem(
+        SONGS_STORAGE_KEY,
+        JSON.stringify(songs)
+    );
+
+    refreshSongList(songs);
+
+}
+
+// 저장한 곡 드롭다운의 선택지를 다시 그립니다.
+function refreshSongList(songs) {
+
+    if (!songList) {
+        return;
+    }
+
+    const list =
+        songs || readSavedSongs();
+
+    songList.innerHTML = "";
+
+    const placeholder =
+        document.createElement("option");
+
+    placeholder.value = "";
+
+    placeholder.textContent =
+        list.length > 0
+            ? "불러올 곡 선택"
+            : "저장된 곡이 없습니다";
+
+    songList.appendChild(
+        placeholder
+    );
+
+    list.forEach(song => {
+
+        const option =
+            document.createElement("option");
+
+        option.value =
+            song.id;
+
+        option.textContent =
+            `${song.title} (${song.bpm} BPM)`;
+
+        songList.appendChild(
+            option
+        );
+
+    });
+
+}
+
+// 현재 편집 중인 곡을 저장된 목록에 추가하거나 갱신합니다.
+function saveCurrentSong() {
+
+    const title =
+        (songTitle.value || "제목 없는 곡").trim();
+
+    const songs =
+        readSavedSongs();
+
+    const now =
+        new Date().toISOString();
+
+    const existing =
+        songs.find(
+            song => song.title === title
+        );
+
+    const data = {
+
+        title:
+            title,
+
+        bpm:
+            bpm,
+
+        notes:
+            composition,
+
+        saveAt:
+            now
+    };
+
+    if (existing) {
+
+        Object.assign(
+            existing,
+            data
+        );
+
+    }
+
+    else {
+
+        songs.push({
+            id:
+                `song_${Date.now()}`,
+            ...data
+        });
+
+    }
+
+    writeSavedSongs(songs);
+
+    statusText.textContent =
+        `💾 "${title}" 곡이 저장되었습니다. (총 ${songs.length}곡)`;
+
+}
+
+if (saveButton) {
+
+    saveButton.addEventListener(
+        "click",
+        saveCurrentSong
+    );
+
+}
+
+// 저장 데이터(제목/BPM/음표)를 현재 편집기에 적용합니다.
+function applySongData(data) {
+
+    songTitle.value =
+        data.title ||
+        "나의 첫 번째 곡";
+
+    bpm =
+        data.bpm ||
+        120;
+
+    if (bpmInput) {
+        bpmInput.value =
+            bpm;
+    }
+
+    composition =
+        data.notes ||
+        [];
+
+    composition =
+        composition.map(note => ({
+            ...note,
+
+            offsetBeats:
+                typeof note.offsetBeats === "number"
+                    ? note.offsetBeats
+                    : 0,
+
+            durationBeats:
+                note.durationBeats ||
+                DEFAULT_NOTE_DURATION
+        }));
+
+    restoreGrid();
+
+    renderComposition();
+
+}
+
+// 드롭다운에서 고른 곡을 불러옵니다.
+if (songList) {
+
+    songList.addEventListener(
+        "change",
+        () => {
+
+            const id =
+                songList.value;
+
+            if (!id) {
+                return;
+            }
+
+            const song =
+                readSavedSongs().find(
+                    item => item.id === id
+                );
+
+            if (!song) {
+                return;
+            }
+
+            applySongData(song);
+
+            statusText.textContent =
+                `📂 "${song.title}" 곡을 불러왔습니다.`;
+
+        }
+    );
+
+}
+
+// 페이지 진입 시 저장된 곡 목록을 채우고, 가장 최근 곡을 불러옵니다.
+function loadComposition() {
+
+    const songs =
+        readSavedSongs();
+
+    refreshSongList(songs);
+
+    if (songs.length > 0) {
+
+        const latest =
+            songs[songs.length - 1];
+
+        applySongData(latest);
+
+        statusText.textContent =
+            `💾 "${latest.title}" 곡을 불러왔습니다.`;
+
+        return;
+
+    }
+
+    // 예전 버전의 단일 슬롯 저장본이 있으면 한 번 이전합니다.
+    const legacy =
         localStorage.getItem(
             "louisKarielComposition"
         );
 
-    if (!saved) {
+    if (!legacy) {
         return;
     }
 
     try {
 
         const data =
-            JSON.parse(saved);
+            JSON.parse(legacy);
 
-        songTitle.value =
-            data.title ||
-            "나의 첫 번째 곡";
-
-        bpm =
-            data.bpm ||
-            120;
-
-        bpmInput.value =
-            bpm;
-
-        composition =
-            data.notes ||
-            [];
-
-        composition =
-            composition.map(note => ({
-                ...note,
-
-                offsetBeats:
-                    typeof note.offsetBeats === "number"
-                        ? note.offsetBeats
-                        : 0,
-
-                durationBeats:
-                    note.durationBeats ||
-                    DEFAULT_NOTE_DURATION
-            }));
-
-        restoreGrid();
-
-        renderComposition();
+        applySongData(data);
 
         statusText.textContent =
             "💾 저장된 곡을 불러왔습니다.";
@@ -4368,6 +4583,155 @@ clearButton.addEventListener(
 
     }
 );
+
+// 현재 곡을 JSON 파일로 내려받습니다.
+if (exportButton) {
+
+    exportButton.addEventListener(
+        "click",
+        () => {
+
+            const data = {
+
+                title:
+                    (songTitle.value || "제목 없는 곡").trim(),
+
+                bpm:
+                    bpm,
+
+                beatsPerMeasure:
+                    beatsPerMeasure,
+
+                beatUnit:
+                    beatUnit,
+
+                totalSteps:
+                    totalSteps,
+
+                notes:
+                    composition,
+
+                exportedAt:
+                    new Date().toISOString()
+
+            };
+
+            const blob =
+                new Blob(
+                    [JSON.stringify(data, null, 2)],
+                    { type: "application/json" }
+                );
+
+            const url =
+                URL.createObjectURL(blob);
+
+            const link =
+                document.createElement("a");
+
+            link.href = url;
+
+            link.download =
+                `${data.title}.json`;
+
+            document.body.appendChild(link);
+
+            link.click();
+
+            document.body.removeChild(link);
+
+            URL.revokeObjectURL(url);
+
+            statusText.textContent =
+                "⬇ JSON 파일로 내보냈습니다.";
+
+        }
+    );
+
+}
+
+// JSON 파일을 골라 현재 편집기로 불러옵니다.
+if (importFileButton && importFileInput) {
+
+    importFileButton.addEventListener(
+        "click",
+        () => {
+
+            importFileInput.click();
+
+        }
+    );
+
+    importFileInput.addEventListener(
+        "change",
+        () => {
+
+            const file =
+                importFileInput.files &&
+                importFileInput.files[0];
+
+            if (!file) {
+                return;
+            }
+
+            const reader =
+                new FileReader();
+
+            reader.onload =
+                () => {
+
+                    try {
+
+                        const data =
+                            JSON.parse(
+                                String(reader.result)
+                            );
+
+                        if (
+                            data &&
+                            Array.isArray(data.notes)
+                        ) {
+                            applySongData(data);
+
+                            statusText.textContent =
+                                `⬆ "${data.title || "가져온 곡"}" 파일을 불러왔습니다.`;
+
+                        }
+
+                        else {
+
+                            statusText.textContent =
+                                "⚠ 올바른 곡 파일이 아닙니다.";
+
+                        }
+
+                    }
+
+                    catch (error) {
+
+                        console.error(
+                            "JSON 가져오기 실패 : ",
+                            error
+                        );
+
+                        statusText.textContent =
+                            "⚠ 곡 파일을 읽을 수 없습니다.";
+
+                    }
+
+                    finally {
+
+                        importFileInput.value = "";
+
+                    }
+
+                };
+
+            reader.readAsText(file);
+
+        }
+    );
+
+}
 
 importButton.addEventListener(
     "click",

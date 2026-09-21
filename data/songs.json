@@ -1,0 +1,57 @@
+{
+    "description": "루이의 음악실 작곡실 곡 파일 형식 예시. 작곡실의 '⬇ JSON 내보내기'로 같은 형식을 내려받을 수 있고, '⬆ JSON 가져오기'로 이 파일을 불러올 수 있습니다.",
+    "songs": [
+        {
+            "title": "반짝반짝 작은별 (앞부분)",
+            "bpm": 100,
+            "beatsPerMeasure": 4,
+            "beatUnit": 4,
+            "totalSteps": 16,
+            "notes": [
+                {
+                    "note": "C4",
+                    "step": 0,
+                    "offsetBeats": 0,
+                    "durationBeats": 1
+                },
+                {
+                    "note": "C4",
+                    "step": 1,
+                    "offsetBeats": 0,
+                    "durationBeats": 1
+                },
+                {
+                    "note": "G4",
+                    "step": 2,
+                    "offsetBeats": 0,
+                    "durationBeats": 1
+                },
+                {
+                    "note": "G4",
+                    "step": 3,
+                    "offsetBeats": 0,
+                    "durationBeats": 1
+                },
+                {
+                    "note": "A4",
+                    "step": 4,
+                    "offsetBeats": 0,
+                    "durationBeats": 1
+                },
+                {
+                    "note": "A4",
+                    "step": 5,
+                    "offsetBeats": 0,
+                    "durationBeats": 1
+                },
+                {
+                    "note": "G4",
+                    "step": 6,
+                    "offsetBeats": 0,
+                    "durationBeats": 2
+                }
+            ],
+            "exportedAt": "2026-01-01T00:00:00.000Z"
+        }
+    ]
+}
