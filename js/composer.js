@@ -205,6 +205,8 @@ if (restModeButton) {
 
             updateDurationButtonSymbols();
 
+            updateSelectedDurationButtons();
+
         }
     );
 
@@ -333,10 +335,42 @@ durationButtons.forEach(button => {
 
             }
 
+            updateSelectedDurationButtons();
+
         }
     );
 
 });
+
+function updateSelectedDurationButtons() {
+
+    const restModeActive =
+        restMode || tripletMode;
+
+    durationButtons.forEach(
+        button => {
+
+            const duration =
+                Number(
+                    button.dataset.duration
+                );
+
+            button.classList.toggle(
+                "disabled",
+                restModeActive
+            );
+
+            button.setAttribute(
+                "aria-disabled",
+                restModeActive
+                    ? "true"
+                    : "false"
+            );
+
+        }
+    );
+
+}
 
 const tripletButton =
     document.getElementById("tripletButton");
@@ -358,6 +392,8 @@ if (tripletButton) {
                 "active",
                 tripletMode
             );
+
+            updateSelectedDurationButtons();
 
             if (tripletMode) {
                 selectedDurationText.textContent =
@@ -1841,7 +1877,8 @@ timeSignatureInput.addEventListener(
 
         }
 
-        beatPerMeasure = 4;
+        beatsPerMeasure = 4;
+
         beatUnit = 4;
 
         createBeatLabels();
@@ -2053,6 +2090,15 @@ function stopPlayback() {
     );
 
     playbackTimers = [];
+
+    if (
+        typeof resetKeyboardInput ===
+        "function"
+    ) {
+
+        resetKeyboardInput();
+
+    }
 
     isPlaying = false;
 
@@ -3069,98 +3115,9 @@ function renderSingleNote(noteData) {
         cell
     );
 
-    const block =
-        createNoteBlock(
-            noteData,
-            cell
-        );
-
-    block.addEventListener(
-        "click",
-        event => {
-
-            if (wasDragging) {
-
-                wasDragging = false;
-
-                event.preventDefault();
-                event.stopPropagation();
-
-                return;
-
-            }
-
-            if (
-                event.target.closest(
-                    ".note-resize-handle"
-                )
-            ) {
-                return;
-            }
-
-            if (
-                event.shiftKey ||
-                event.ctrlKey ||
-                event.metaKey
-            ) {
-                return;
-            }
-
-            event.stopPropagation();
-
-            saveUndoState();
-
-            const index =
-                composition.indexOf(
-                    noteData
-                );
-
-            if (index !== -1) {
-
-                composition.splice(
-                    index,
-                    1
-                );
-
-                const block =
-                    composerNoteBlockMap.get(
-                        noteData
-                    );
-
-                if (block) {
-
-                    block.remove();
-
-                    composerNoteBlockMap.delete(
-                        noteData
-                    );
-
-                }
-
-                if (!cell.querySelector(".note-block")) {
-
-                    cell.classList.remove(
-                        "active"
-                    );
-
-                    activeComposerCells.delete(
-                        cell
-                    );
-
-                }
-
-                selectedNotes =
-                    selectedNotes.filter(
-                        note =>
-                            note !== noteData
-                    );
-
-                statusText.textContent =
-                    "음표가 삭제되었습니다.";
-
-            }
-
-        }
+    createNoteBlock(
+        noteData,
+        cell
     );
 
 }
@@ -3541,6 +3498,31 @@ function setupNoteDrag(
                     "note-resize-handle"
                 )
             ) {
+
+                block.classList.add(
+                    "resizing"
+                );
+
+                handle.setPointerCapture(
+                    event.pointerId
+                );
+
+                startX =
+                    event.clientX;
+
+                startDuration =
+                    noteData.durationBeats ||
+                    DEFAULT_NOTE_DURATION;
+
+                originalDuration =
+                    startDuration;
+
+                cellWidth =
+                    block.parentElement
+                        .getBoundingClientRect()
+                        .width;
+
+                saveUndoState();
 
                 return;
 
@@ -5144,6 +5126,8 @@ createBeatLabels();
 createGrid();
 
 updateDurationButtonSymbols();
+
+updateSelectedDurationButtons();
 
 createOctaveSeparators();
 

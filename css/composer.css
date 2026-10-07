@@ -167,6 +167,19 @@
     transform: scale(0.96);
 }
 
+.duration-button.disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.duration-button.disabled:hover {
+    background: #faf9f6;
+}
+
+.duration-button.disabled:active {
+    transform: none;
+}
+
 .duration-button.active {
     background: #1e1e1e;
     border-color: #1e1e1e;
